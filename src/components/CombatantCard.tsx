@@ -1,19 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store'
 import type { Combatant } from '../types'
 import { CONDITIONS } from '../data/conditions'
 import { hpStatus, hpStatusColor } from '../utils/hpStatus'
+import type { FocusTarget } from '../App'
 
 export default function CombatantCard({
   c,
   isCurrent,
   expanded,
   onToggle,
+  pendingFocus,
+  clearPendingFocus,
 }: {
   c: Combatant
   isCurrent: boolean
   expanded: boolean
   onToggle: () => void
+  pendingFocus: FocusTarget
+  clearPendingFocus: () => void
 }) {
   const update = useStore((s) => s.updateCombatant)
   const remove = useStore((s) => s.removeCombatant)
@@ -25,6 +30,18 @@ export default function CombatantCard({
 
   const [dmg, setDmg] = useState('')
   const [hl, setHl] = useState('')
+  const dmgRef = useRef<HTMLInputElement>(null)
+  const hlRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!isCurrent || !expanded || !pendingFocus) return
+    const ref = pendingFocus === 'heal' ? hlRef : dmgRef
+    const el = ref.current
+    if (!el) return
+    el.focus()
+    el.select()
+    clearPendingFocus()
+  }, [isCurrent, expanded, pendingFocus, clearPendingFocus])
 
   const pct = Math.max(0, Math.min(100, (c.currentHP / Math.max(1, c.maxHP)) * 100))
   const status = hpStatus(c)
@@ -133,6 +150,7 @@ export default function CombatantCard({
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex gap-1 flex-1 min-w-0">
               <input
+                ref={dmgRef}
                 type="number"
                 placeholder="dmg"
                 value={dmg}
@@ -163,6 +181,7 @@ export default function CombatantCard({
             </div>
             <div className="flex gap-1 flex-1 min-w-0">
               <input
+                ref={hlRef}
                 type="number"
                 placeholder="heal"
                 value={hl}
