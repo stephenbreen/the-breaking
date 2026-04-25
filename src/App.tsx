@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useStore } from './store'
 import Timer from './components/Timer'
 import InitiativeList from './components/InitiativeList'
@@ -10,6 +10,7 @@ import SettingsPanel from './components/SettingsPanel'
 import AddCombatantModal from './components/AddCombatantModal'
 
 type Tab = 'initiative' | 'dice' | 'tables' | 'settings'
+export type FocusTarget = 'heal' | 'damage' | null
 
 export default function App() {
   const round = useStore((s) => s.round)
@@ -19,8 +20,48 @@ export default function App() {
   const previousTurn = useStore((s) => s.previousTurn)
   const [addOpen, setAddOpen] = useState(false)
   const [tab, setTab] = useState<Tab>('initiative')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [pendingFocus, setPendingFocus] = useState<FocusTarget>(null)
 
   const current = combatants[currentIdx]
+
+  const clearPendingFocus = useCallback(() => setPendingFocus(null), [])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const target = e.target as HTMLElement | null
+      if (target) {
+        const tag = target.tagName
+        if (
+          tag === 'INPUT' ||
+          tag === 'TEXTAREA' ||
+          tag === 'SELECT' ||
+          target.isContentEditable
+        ) {
+          return
+        }
+      }
+      if (combatants.length === 0) return
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        previousTurn()
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        nextTurn()
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        const cur = combatants[currentIdx]
+        if (!cur) return
+        e.preventDefault()
+        setTab('initiative')
+        setExpandedId(cur.id)
+        setPendingFocus(e.key === 'ArrowUp' ? 'heal' : 'damage')
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [combatants, currentIdx, nextTurn, previousTurn])
 
   const openPlayerView = () => {
     const url = window.location.pathname + '?view=player'
@@ -123,7 +164,12 @@ export default function App() {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-3 sm:p-4">
-            <InitiativeList />
+            <InitiativeList
+              expandedId={expandedId}
+              setExpandedId={setExpandedId}
+              pendingFocus={pendingFocus}
+              clearPendingFocus={clearPendingFocus}
+            />
           </div>
         </div>
 
