@@ -20,11 +20,11 @@ export default function Timer() {
 
   return (
     <div
-      className={`flex items-center gap-2 rounded px-3 py-1 ${
+      className={`flex items-center gap-1 sm:gap-2 rounded px-2 sm:px-3 py-1 ${
         danger ? 'bg-red-700 animate-pulse' : 'bg-slate-800'
       }`}
     >
-      <span className="text-2xl font-mono font-bold w-14 text-center">
+      <span className="text-lg sm:text-2xl font-mono font-bold w-10 sm:w-14 text-center">
         {timerRemaining}s
       </span>
       <button onClick={() => setRunning(!timerRunning)} className="btn">
@@ -39,7 +39,7 @@ export default function Timer() {
         max={600}
         value={timerSeconds}
         onChange={(e) => setSeconds(Math.max(5, parseInt(e.target.value, 10) || 60))}
-        className="input w-16"
+        className="input w-16 hidden sm:block"
         title="Seconds per turn"
       />
     </div>

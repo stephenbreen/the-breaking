@@ -40,14 +40,14 @@ export default function CombatantCard({
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/5"
+        className="w-full flex items-start gap-2 sm:gap-3 px-2 sm:px-3 py-2 text-left hover:bg-white/5"
       >
-        <div className="w-12 h-12 rounded bg-slate-800 flex flex-col items-center justify-center text-xs shrink-0">
-          <div className="text-slate-400 text-[10px]">INIT</div>
-          <div className="font-bold text-base leading-none">{c.initiative}</div>
+        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded bg-slate-800 flex flex-col items-center justify-center text-xs shrink-0">
+          <div className="text-slate-400 text-[9px] sm:text-[10px]">INIT</div>
+          <div className="font-bold text-sm sm:text-base leading-none">{c.initiative}</div>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className="font-semibold truncate">{c.name}</span>
             <span
               className={`text-[10px] px-1.5 py-0.5 rounded ${
@@ -85,110 +85,113 @@ export default function CombatantCard({
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="text-sm font-mono whitespace-nowrap text-slate-200">
+            <span className="text-xs sm:text-sm font-mono whitespace-nowrap text-slate-200">
               {c.currentHP}/{c.maxHP}
             </span>
             <span className="text-[11px] text-slate-500 whitespace-nowrap">AC {c.AC}</span>
-            <span className="text-[11px] text-slate-500 whitespace-nowrap">PP {c.passivePerception}</span>
-          </div>
-        </div>
-        <div className="flex gap-1 flex-wrap justify-end max-w-[40%]">
-          {c.conditions.slice(0, 4).map((cid) => {
-            const def = CONDITIONS.find((x) => x.id === cid)
-            if (!def) return null
-            return (
-              <span
-                key={cid}
-                title={def.description}
-                className="text-[10px] px-1.5 py-0.5 rounded bg-purple-900/60 text-purple-200"
-              >
-                {def.name}
-              </span>
-            )
-          })}
-          {c.conditions.length > 4 && (
-            <span className="text-[10px] text-slate-500 self-center">
-              +{c.conditions.length - 4}
+            <span className="hidden sm:inline text-[11px] text-slate-500 whitespace-nowrap">
+              PP {c.passivePerception}
             </span>
+          </div>
+          {(c.conditions.length > 0 ||
+            labelNames.some((n) => c.strategyLabels[n])) && (
+            <div className="flex gap-1 flex-wrap mt-1.5">
+              {c.conditions.map((cid) => {
+                const def = CONDITIONS.find((x) => x.id === cid)
+                if (!def) return null
+                return (
+                  <span
+                    key={cid}
+                    title={def.description}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-purple-900/60 text-purple-200"
+                  >
+                    {def.name}
+                  </span>
+                )
+              })}
+              {labelNames.map((n) => {
+                const count = c.strategyLabels[n]
+                return count ? (
+                  <span
+                    key={n}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-100"
+                  >
+                    {n} {count}
+                  </span>
+                ) : null
+              })}
+            </div>
           )}
-          {labelNames.map((n) => {
-            const count = c.strategyLabels[n]
-            return count ? (
-              <span
-                key={n}
-                className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-100"
-              >
-                {n} {count}
-              </span>
-            ) : null
-          })}
         </div>
-        <div className="text-slate-500 text-lg ml-1 shrink-0">
+        <div className="text-slate-500 text-lg ml-1 shrink-0 self-center">
           {expanded ? '▾' : '▸'}
         </div>
       </button>
 
       {expanded && (
-        <div className="px-3 pb-3 pt-2 border-t border-slate-800 space-y-3">
+        <div className="px-2 sm:px-3 pb-3 pt-2 border-t border-slate-800 space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <input
-              type="number"
-              placeholder="dmg"
-              value={dmg}
-              onChange={(e) => setDmg(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+            <div className="flex gap-1 flex-1 min-w-0">
+              <input
+                type="number"
+                placeholder="dmg"
+                value={dmg}
+                onChange={(e) => setDmg(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const n = parseInt(dmg, 10)
+                    if (n > 0) {
+                      damage(c.id, n)
+                      setDmg('')
+                    }
+                  }
+                }}
+                className="input w-16 sm:w-20"
+              />
+              <button
+                onClick={() => {
                   const n = parseInt(dmg, 10)
                   if (n > 0) {
                     damage(c.id, n)
                     setDmg('')
                   }
-                }
-              }}
-              className="input w-20"
-            />
-            <button
-              onClick={() => {
-                const n = parseInt(dmg, 10)
-                if (n > 0) {
-                  damage(c.id, n)
-                  setDmg('')
-                }
-              }}
-              className="btn-danger"
-            >
-              Damage
-            </button>
-            <input
-              type="number"
-              placeholder="heal"
-              value={hl}
-              onChange={(e) => setHl(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                }}
+                className="btn-danger"
+              >
+                Damage
+              </button>
+            </div>
+            <div className="flex gap-1 flex-1 min-w-0">
+              <input
+                type="number"
+                placeholder="heal"
+                value={hl}
+                onChange={(e) => setHl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const n = parseInt(hl, 10)
+                    if (n > 0) {
+                      heal(c.id, n)
+                      setHl('')
+                    }
+                  }
+                }}
+                className="input w-16 sm:w-20"
+              />
+              <button
+                onClick={() => {
                   const n = parseInt(hl, 10)
                   if (n > 0) {
                     heal(c.id, n)
                     setHl('')
                   }
-                }
-              }}
-              className="input w-20"
-            />
-            <button
-              onClick={() => {
-                const n = parseInt(hl, 10)
-                if (n > 0) {
-                  heal(c.id, n)
-                  setHl('')
-                }
-              }}
-              className="btn-primary"
-            >
-              Heal
-            </button>
-            <div className="flex-1" />
-            <span className="text-xs text-slate-400">
+                }}
+                className="btn-primary"
+              >
+                Heal
+              </button>
+            </div>
+            <span className="text-xs text-slate-400 ml-auto">
               Status{' '}
               <span className={`px-1.5 py-0.5 rounded ${hpStatusColor(status)} text-xs`}>
                 {status}
@@ -328,7 +331,7 @@ export default function CombatantCard({
             />
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap pt-1 border-t border-slate-800">
+          <div className="flex items-center gap-3 flex-wrap pt-2 border-t border-slate-800">
             <label className="flex items-center gap-1 text-xs text-slate-400">
               <input
                 type="checkbox"
@@ -345,21 +348,22 @@ export default function CombatantCard({
               />
               Dead
             </label>
-            <div className="flex-1" />
-            <input
-              value={c.name}
-              onChange={(e) => update(c.id, { name: e.target.value })}
-              className="input"
-              title="Rename"
-            />
-            <button
-              onClick={() => {
-                if (confirm(`Remove ${c.name} from the encounter?`)) remove(c.id)
-              }}
-              className="btn-danger"
-            >
-              Delete
-            </button>
+            <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
+              <input
+                value={c.name}
+                onChange={(e) => update(c.id, { name: e.target.value })}
+                className="input flex-1 sm:w-40"
+                title="Rename"
+              />
+              <button
+                onClick={() => {
+                  if (confirm(`Remove ${c.name} from the encounter?`)) remove(c.id)
+                }}
+                className="btn-danger"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

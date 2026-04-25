@@ -14,7 +14,7 @@ export default function DiceRoller() {
   }
 
   return (
-    <div className="p-4 space-y-3">
+    <div className="p-3 sm:p-4 space-y-3 h-full overflow-y-auto">
       <div className="grid grid-cols-4 gap-2">
         {DICE.map((d) => (
           <button key={d} onClick={() => roll(`d${d}`)} className="btn">
@@ -45,7 +45,7 @@ export default function DiceRoller() {
           Roll
         </button>
       </form>
-      <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+      <div className="space-y-1">
         {history.length === 0 && (
           <div className="text-xs text-slate-500 italic">No rolls yet.</div>
         )}
