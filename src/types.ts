@@ -39,6 +39,13 @@ export type TriggerInfo = {
   pct: number
 }
 
+export type RolledInjury = {
+  tableName: string
+  diceExpression: string
+  roll: number
+  text: string | null
+}
+
 export type EncounterState = {
   combatants: Combatant[]
   currentTurnIndex: number
@@ -50,4 +57,5 @@ export type EncounterState = {
   strategyLabelNames: string[]
   tables: RollTable[]
   lastTrigger: TriggerInfo | null
+  triggerRoll: RolledInjury | null
 }

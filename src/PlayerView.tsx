@@ -2,6 +2,7 @@ import { useStore } from './store'
 import { CONDITIONS } from './data/conditions'
 import { hpStatus, hpStatusColor } from './utils/hpStatus'
 import Hourglass from './components/Hourglass'
+import PlayerInjuryBanner from './components/PlayerInjuryBanner'
 
 export default function PlayerView() {
   const combatants = useStore((s) => s.combatants)
@@ -16,6 +17,7 @@ export default function PlayerView() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
+      <PlayerInjuryBanner />
       <header className="flex items-center gap-6 px-8 py-4 border-b border-slate-800 bg-slate-900 sticky top-0 z-10">
         <h1 className="text-3xl font-bold tracking-tight">⚔ The Breaking</h1>
         <div className="flex-1" />

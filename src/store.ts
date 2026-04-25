@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { Combatant, EncounterState, RollTable } from './types'
+import type { Combatant, EncounterState, RollTable, RolledInjury } from './types'
 import { buildDefaultEncounter } from './data/defaultState'
 import { newId } from './utils/id'
 
@@ -28,6 +28,7 @@ type Actions = {
   updateTable: (id: string, patch: Partial<RollTable>) => void
   removeTable: (id: string) => void
   clearTrigger: () => void
+  setTriggerRoll: (roll: RolledInjury | null) => void
 }
 
 export type Store = EncounterState & Actions
@@ -117,6 +118,7 @@ export const useStore = create<Store>()(
                   pct,
                 }
               : s.lastTrigger,
+          triggerRoll: triggered != null ? null : s.triggerRoll,
         })
       },
 
@@ -273,7 +275,9 @@ export const useStore = create<Store>()(
       removeTable: (id) =>
         set((s) => ({ tables: s.tables.filter((t) => t.id !== id) })),
 
-      clearTrigger: () => set({ lastTrigger: null }),
+      clearTrigger: () => set({ lastTrigger: null, triggerRoll: null }),
+
+      setTriggerRoll: (roll) => set({ triggerRoll: roll }),
     }),
     {
       name: 'the-breaking-encounter',
@@ -311,7 +315,7 @@ export const useStore = create<Store>()(
 // We sync their state by broadcasting a snapshot after every store change
 // and applying received snapshots locally. A `receiving` flag prevents loops.
 
-type Snapshot = Omit<EncounterState, 'lastTrigger'>
+type Snapshot = EncounterState
 
 function snapshot(s: EncounterState): Snapshot {
   const {
@@ -324,6 +328,8 @@ function snapshot(s: EncounterState): Snapshot {
     thresholds,
     strategyLabelNames,
     tables,
+    lastTrigger,
+    triggerRoll,
   } = s
   return {
     combatants,
@@ -335,6 +341,8 @@ function snapshot(s: EncounterState): Snapshot {
     thresholds,
     strategyLabelNames,
     tables,
+    lastTrigger,
+    triggerRoll,
   }
 }
 

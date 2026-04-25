@@ -57,6 +57,12 @@ export default function App() {
         setTab('initiative')
         setExpandedId(cur.id)
         setPendingFocus(e.key === 'ArrowUp' ? 'heal' : 'damage')
+      } else if (e.key === ' ' || e.code === 'Space') {
+        const cur = combatants[currentIdx]
+        if (!cur) return
+        e.preventDefault()
+        setTab('initiative')
+        setExpandedId((prev) => (prev === cur.id ? null : cur.id))
       }
     }
     window.addEventListener('keydown', handler)
