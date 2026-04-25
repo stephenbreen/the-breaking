@@ -1,18 +1,12 @@
-import { useEffect, useState } from 'react'
 import { useStore } from '../store'
 import { rollExpression, matchTableEntry } from '../utils/dice'
 
-type Rolled = { roll: number; text: string | null; tableName: string }
-
 export default function InjuryToast() {
   const trigger = useStore((s) => s.lastTrigger)
+  const rolled = useStore((s) => s.triggerRoll)
+  const setRoll = useStore((s) => s.setTriggerRoll)
   const clear = useStore((s) => s.clearTrigger)
   const tables = useStore((s) => s.tables)
-  const [rolled, setRolled] = useState<Rolled | null>(null)
-
-  useEffect(() => {
-    setRolled(null)
-  }, [trigger])
 
   if (!trigger) return null
 
@@ -28,12 +22,12 @@ export default function InjuryToast() {
     const r = rollExpression(table.dice)
     if (!r) return
     const entry = matchTableEntry(table.entries, r.total)
-    setRolled({ roll: r.total, text: entry?.text ?? null, tableName: table.name })
-  }
-
-  const dismiss = () => {
-    setRolled(null)
-    clear()
+    setRoll({
+      tableName: table.name,
+      diceExpression: table.dice,
+      roll: r.total,
+      text: entry?.text ?? null,
+    })
   }
 
   return (
@@ -79,7 +73,7 @@ export default function InjuryToast() {
             Roll {table.dice}
           </button>
         )}
-        <button onClick={dismiss} className="btn">
+        <button onClick={clear} className="btn">
           Dismiss
         </button>
       </div>
