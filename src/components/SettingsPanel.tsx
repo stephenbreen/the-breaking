@@ -26,7 +26,7 @@ export default function SettingsPanel() {
   }
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-3 sm:p-4 space-y-6 h-full overflow-y-auto">
       <section>
         <h3 className="font-semibold mb-1">Massive damage thresholds</h3>
         <p className="text-xs text-slate-400 mb-2">
