@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { Combatant, EncounterState, RollTable } from './types'
+import type { Combatant, EncounterState, RollTable, Theme } from './types'
 import { buildDefaultEncounter } from './data/defaultState'
 import { newId } from './utils/id'
 
@@ -28,6 +28,7 @@ type Actions = {
   updateTable: (id: string, patch: Partial<RollTable>) => void
   removeTable: (id: string) => void
   clearTrigger: () => void
+  setTheme: (theme: Theme) => void
 }
 
 export type Store = EncounterState & Actions
@@ -274,6 +275,8 @@ export const useStore = create<Store>()(
         set((s) => ({ tables: s.tables.filter((t) => t.id !== id) })),
 
       clearTrigger: () => set({ lastTrigger: null }),
+
+      setTheme: (theme) => set({ theme }),
     }),
     {
       name: 'the-breaking-encounter',
@@ -289,6 +292,7 @@ export const useStore = create<Store>()(
           thresholds,
           strategyLabelNames,
           tables,
+          theme,
         } = state
         return {
           combatants,
@@ -300,6 +304,7 @@ export const useStore = create<Store>()(
           thresholds,
           strategyLabelNames,
           tables,
+          theme,
         } as unknown as EncounterState
       },
     }
@@ -324,6 +329,7 @@ function snapshot(s: EncounterState): Snapshot {
     thresholds,
     strategyLabelNames,
     tables,
+    theme,
   } = s
   return {
     combatants,
@@ -335,6 +341,7 @@ function snapshot(s: EncounterState): Snapshot {
     thresholds,
     strategyLabelNames,
     tables,
+    theme,
   }
 }
 

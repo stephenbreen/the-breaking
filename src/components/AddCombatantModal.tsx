@@ -59,7 +59,7 @@ export default function AddCombatantModal({
           submit(false)
         }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-slate-900 border border-slate-700 rounded-lg p-6 w-[26rem] max-w-full space-y-3"
+        className="bg-app-surface border border-app-line-2 rounded-lg p-6 w-[26rem] max-w-full space-y-3"
       >
         <h3 className="text-lg font-bold">Add Combatant</h3>
         <div className="flex gap-2">
@@ -67,7 +67,7 @@ export default function AddCombatantModal({
             type="button"
             onClick={() => setType('pc')}
             className={`flex-1 py-2 rounded ${
-              type === 'pc' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'
+              type === 'pc' ? 'bg-pc-solid text-white' : 'bg-app-elev text-app-muted'
             }`}
           >
             PC
@@ -76,14 +76,14 @@ export default function AddCombatantModal({
             type="button"
             onClick={() => setType('monster')}
             className={`flex-1 py-2 rounded ${
-              type === 'monster' ? 'bg-red-600 text-white' : 'bg-slate-800 text-slate-400'
+              type === 'monster' ? 'bg-npc-solid text-white' : 'bg-app-elev text-app-muted'
             }`}
           >
             Monster / NPC
           </button>
         </div>
         <label className="block">
-          <span className="text-xs text-slate-400">Name</span>
+          <span className="text-xs text-app-muted">Name</span>
           <input
             autoFocus
             value={name}
@@ -93,7 +93,7 @@ export default function AddCombatantModal({
         </label>
         <div className="grid grid-cols-2 gap-2">
           <label className="block">
-            <span className="text-xs text-slate-400">Initiative</span>
+            <span className="text-xs text-app-muted">Initiative</span>
             <input
               type="number"
               value={init}
@@ -102,7 +102,7 @@ export default function AddCombatantModal({
             />
           </label>
           <label className="block">
-            <span className="text-xs text-slate-400">Max HP</span>
+            <span className="text-xs text-app-muted">Max HP</span>
             <input
               type="number"
               value={maxHP}
@@ -111,7 +111,7 @@ export default function AddCombatantModal({
             />
           </label>
           <label className="block">
-            <span className="text-xs text-slate-400">AC</span>
+            <span className="text-xs text-app-muted">AC</span>
             <input
               type="number"
               value={AC}
@@ -120,7 +120,7 @@ export default function AddCombatantModal({
             />
           </label>
           <label className="block">
-            <span className="text-xs text-slate-400">Passive Perception</span>
+            <span className="text-xs text-app-muted">Passive Perception</span>
             <input
               type="number"
               value={pp}

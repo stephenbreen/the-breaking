@@ -79,7 +79,7 @@ export default function EncounterMenu() {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-20 bg-slate-900 border border-slate-700 rounded shadow-xl w-60 py-1">
+          <div className="absolute right-0 top-full mt-1 z-20 bg-app-surface border border-app-line-2 rounded shadow-xl w-60 py-1">
             <button
               onClick={() => {
                 if (confirm('Start a new encounter? Combatants will be cleared; tables kept.')) {
@@ -87,7 +87,7 @@ export default function EncounterMenu() {
                   setOpen(false)
                 }
               }}
-              className="w-full text-left px-3 py-2 hover:bg-slate-800 text-sm"
+              className="w-full text-left px-3 py-2 hover:bg-app-elev text-sm"
             >
               New encounter
             </button>
@@ -96,20 +96,20 @@ export default function EncounterMenu() {
                 clearFired()
                 setOpen(false)
               }}
-              className="w-full text-left px-3 py-2 hover:bg-slate-800 text-sm"
+              className="w-full text-left px-3 py-2 hover:bg-app-elev text-sm"
             >
               Reset injury triggers
             </button>
-            <div className="border-t border-slate-700 my-1" />
+            <div className="border-t border-app-line-2 my-1" />
             <button
               onClick={exportJson}
-              className="w-full text-left px-3 py-2 hover:bg-slate-800 text-sm"
+              className="w-full text-left px-3 py-2 hover:bg-app-elev text-sm"
             >
               Export encounter JSON…
             </button>
             <button
               onClick={() => fileRef.current?.click()}
-              className="w-full text-left px-3 py-2 hover:bg-slate-800 text-sm"
+              className="w-full text-left px-3 py-2 hover:bg-app-elev text-sm"
             >
               Import encounter JSON…
             </button>

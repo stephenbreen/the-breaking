@@ -29,7 +29,7 @@ export default function SettingsPanel() {
     <div className="p-3 sm:p-4 space-y-6 h-full overflow-y-auto">
       <section>
         <h3 className="font-semibold mb-1">Massive damage thresholds</h3>
-        <p className="text-xs text-slate-400 mb-2">
+        <p className="text-xs text-app-muted mb-2">
           A single hit dealing this percentage of max HP triggers the matching
           injury table. When multiple thresholds apply, only the highest fires.
           Each threshold fires at most once per combatant per encounter.
@@ -42,7 +42,7 @@ export default function SettingsPanel() {
             onBlur={commitThresholds}
             className="input w-20"
           />
-          <span className="text-slate-400">%</span>
+          <span className="text-app-muted">%</span>
           <input
             type="number"
             value={t2}
@@ -50,7 +50,7 @@ export default function SettingsPanel() {
             onBlur={commitThresholds}
             className="input w-20"
           />
-          <span className="text-slate-400">%</span>
+          <span className="text-app-muted">%</span>
         </div>
         <button onClick={clearFired} className="btn mt-2 text-xs">
           Reset triggers for this encounter
@@ -59,18 +59,18 @@ export default function SettingsPanel() {
 
       <section>
         <h3 className="font-semibold mb-1">Strategy labels</h3>
-        <p className="text-xs text-slate-400 mb-2">
+        <p className="text-xs text-app-muted mb-2">
           Stackable tactical labels the DM applies to combatants (e.g., Surrounded 1/2/3).
           Visible to players.
         </p>
         <div className="flex flex-wrap gap-1 mb-2">
           {labelNames.length === 0 && (
-            <div className="text-xs text-slate-500 italic">No labels defined.</div>
+            <div className="text-xs text-app-subtle italic">No labels defined.</div>
           )}
           {labelNames.map((n) => (
             <div
               key={n}
-              className="flex items-center bg-slate-800 rounded overflow-hidden text-sm"
+              className="flex items-center bg-app-elev rounded overflow-hidden text-sm"
             >
               <span className="px-2 py-1">{n}</span>
               <button
@@ -78,7 +78,7 @@ export default function SettingsPanel() {
                   if (confirm(`Remove "${n}" label and clear it from all combatants?`))
                     removeLabel(n)
                 }}
-                className="px-2 py-1 hover:bg-red-900 text-red-400"
+                className="px-2 py-1 hover:bg-danger-soft text-danger"
               >
                 ×
               </button>
@@ -108,7 +108,7 @@ export default function SettingsPanel() {
         </form>
       </section>
 
-      <section className="text-xs text-slate-500 pt-4 border-t border-slate-800">
+      <section className="text-xs text-app-subtle pt-4 border-t border-app-line">
         <div>💾 State auto-saves to this browser's localStorage.</div>
         <div>🔗 Player view syncs via BroadcastChannel.</div>
       </section>

@@ -40,4 +40,5 @@ export const buildDefaultEncounter = (): EncounterState => ({
   strategyLabelNames: ['Surrounded'],
   tables: buildDefaultTables(),
   lastTrigger: null,
+  theme: 'midnight',
 })

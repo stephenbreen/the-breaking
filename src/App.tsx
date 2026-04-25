@@ -8,6 +8,8 @@ import InjuryToast from './components/InjuryToast'
 import EncounterMenu from './components/EncounterMenu'
 import SettingsPanel from './components/SettingsPanel'
 import AddCombatantModal from './components/AddCombatantModal'
+import ThemeSwitcher from './components/ThemeSwitcher'
+import { useThemeAttribute } from './hooks/useThemeAttribute'
 
 type Tab = 'initiative' | 'dice' | 'tables' | 'settings'
 export type FocusTarget = 'heal' | 'damage' | null
@@ -22,6 +24,8 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('initiative')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [pendingFocus, setPendingFocus] = useState<FocusTarget>(null)
+
+  useThemeAttribute()
 
   const current = combatants[currentIdx]
 
@@ -89,24 +93,24 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-slate-950 text-slate-100">
-      <header className="flex items-center gap-2 px-2 sm:px-4 py-2 border-b border-slate-800 bg-slate-900 flex-wrap">
+    <div className="h-screen flex flex-col bg-app-bg text-app-fg">
+      <header className="flex items-center gap-2 px-2 sm:px-4 py-2 border-b border-app-line bg-app-surface flex-wrap">
         <h1 className="text-lg sm:text-xl font-bold tracking-tight">
           ⚔ The Breaking
         </h1>
-        <span className="hidden sm:inline text-[10px] uppercase tracking-widest text-slate-500 px-1.5 py-0.5 border border-slate-700 rounded">
+        <span className="hidden sm:inline text-[10px] uppercase tracking-widest text-app-subtle px-1.5 py-0.5 border border-app-line-2 rounded">
           DM
         </span>
         <div className="flex-1 min-w-2" />
         <div className="flex items-center gap-2">
           <div className="text-right">
-            <div className="text-[10px] uppercase tracking-widest text-slate-500 leading-none">Round</div>
+            <div className="text-[10px] uppercase tracking-widest text-app-subtle leading-none">Round</div>
             <div className="text-lg sm:text-xl font-bold leading-tight">{round}</div>
           </div>
           {current && (
-            <div className="text-left px-2 border-l border-slate-700 max-w-[8rem] sm:max-w-none">
-              <div className="text-[10px] uppercase tracking-widest text-slate-500 leading-none">On turn</div>
-              <div className="text-sm font-semibold text-indigo-300 leading-tight truncate">
+            <div className="text-left px-2 border-l border-app-line-2 max-w-[8rem] sm:max-w-none">
+              <div className="text-[10px] uppercase tracking-widest text-app-subtle leading-none">On turn</div>
+              <div className="text-sm font-semibold text-accent-fg leading-tight truncate">
                 {current.name}
               </div>
             </div>
@@ -130,19 +134,20 @@ export default function App() {
         >
           Player View ↗
         </button>
+        <ThemeSwitcher />
         <EncounterMenu />
       </header>
 
       {/* Mobile tab bar */}
-      <div className="sm:hidden flex border-b border-slate-800 bg-slate-900">
+      <div className="sm:hidden flex border-b border-app-line bg-app-surface">
         {(['initiative', 'dice', 'tables', 'settings'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`flex-1 py-2 capitalize text-xs font-medium transition ${
               tab === t
-                ? 'bg-slate-800 text-white border-b-2 border-indigo-400 -mb-px'
-                : 'text-slate-400 hover:bg-slate-900'
+                ? 'bg-app-elev text-app-fg border-b-2 border-accent -mb-px'
+                : 'text-app-muted hover:bg-app-surface'
             }`}
           >
             {t === 'initiative' ? 'Init' : t}
@@ -153,11 +158,11 @@ export default function App() {
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Initiative panel: always visible on desktop, only when tab='initiative' on mobile */}
         <div
-          className={`flex-1 flex-col min-w-0 sm:border-r sm:border-slate-800 sm:flex ${
+          className={`flex-1 flex-col min-w-0 sm:border-r sm:border-app-line sm:flex ${
             tab === 'initiative' ? 'flex' : 'hidden'
           }`}
         >
-          <div className="flex items-center justify-between p-3 sm:p-4 border-b border-slate-800">
+          <div className="flex items-center justify-between p-3 sm:p-4 border-b border-app-line">
             <h2 className="text-base sm:text-lg font-semibold">Initiative</h2>
             <button onClick={() => setAddOpen(true)} className="btn-primary">
               + Add<span className="hidden sm:inline"> Combatant</span>
@@ -180,15 +185,15 @@ export default function App() {
           }`}
         >
           {/* Desktop sub-tabs (dice/tables/settings) */}
-          <div className="hidden sm:flex border-b border-slate-800">
+          <div className="hidden sm:flex border-b border-app-line">
             {(['dice', 'tables', 'settings'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
                 className={`flex-1 py-2.5 capitalize text-sm font-medium transition ${
                   sideTab === t
-                    ? 'bg-slate-800 text-white border-b-2 border-indigo-400 -mb-px'
-                    : 'text-slate-400 hover:bg-slate-900'
+                    ? 'bg-app-elev text-app-fg border-b-2 border-accent -mb-px'
+                    : 'text-app-muted hover:bg-app-surface'
                 }`}
               >
                 {t}

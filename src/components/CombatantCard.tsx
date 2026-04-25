@@ -50,8 +50,8 @@ export default function CombatantCard({
     <div
       className={`mb-2 rounded-lg border transition-colors ${
         isCurrent
-          ? 'border-indigo-400 bg-indigo-950/40 ring-2 ring-indigo-500/30'
-          : 'border-slate-800 bg-slate-900'
+          ? 'border-accent bg-accent-soft/40 ring-2 ring-accent/30'
+          : 'border-app-line bg-app-surface'
       }`}
     >
       <button
@@ -59,8 +59,8 @@ export default function CombatantCard({
         onClick={onToggle}
         className="w-full flex items-start gap-2 sm:gap-3 px-2 sm:px-3 py-2 text-left hover:bg-white/5"
       >
-        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded bg-slate-800 flex flex-col items-center justify-center text-xs shrink-0">
-          <div className="text-slate-400 text-[9px] sm:text-[10px]">INIT</div>
+        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded bg-app-elev flex flex-col items-center justify-center text-xs shrink-0">
+          <div className="text-app-muted text-[9px] sm:text-[10px]">INIT</div>
           <div className="font-bold text-sm sm:text-base leading-none">{c.initiative}</div>
         </div>
         <div className="flex-1 min-w-0">
@@ -68,19 +68,19 @@ export default function CombatantCard({
             <span className="font-semibold truncate">{c.name}</span>
             <span
               className={`text-[10px] px-1.5 py-0.5 rounded ${
-                c.type === 'pc' ? 'bg-emerald-900 text-emerald-200' : 'bg-red-900 text-red-200'
+                c.type === 'pc' ? 'bg-pc-soft text-pc-fg' : 'bg-npc-soft text-npc-fg'
               }`}
             >
               {c.type === 'pc' ? 'PC' : 'NPC'}
             </span>
             {c.isDead && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-app-elev-2 text-app-fg-2">
                 DEAD
               </span>
             )}
             {!c.nameVisibleToPlayers && (
               <span
-                className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400"
+                className="text-[10px] px-1.5 py-0.5 rounded bg-app-elev text-app-muted"
                 title="Name is hidden from players (?)"
               >
                 👁‍🗨 hidden
@@ -88,25 +88,25 @@ export default function CombatantCard({
             )}
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <div className="flex-1 h-2 bg-slate-800 rounded overflow-hidden">
+            <div className="flex-1 h-2 bg-app-elev rounded overflow-hidden">
               <div
                 className={`h-full transition-all ${
                   pct > 50
-                    ? 'bg-emerald-500'
+                    ? 'bg-hp-good'
                     : pct > 25
-                    ? 'bg-amber-500'
+                    ? 'bg-hp-warn'
                     : pct > 0
-                    ? 'bg-red-500'
-                    : 'bg-slate-700'
+                    ? 'bg-hp-bad'
+                    : 'bg-app-elev-2'
                 }`}
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="text-xs sm:text-sm font-mono whitespace-nowrap text-slate-200">
+            <span className="text-xs sm:text-sm font-mono whitespace-nowrap text-app-fg-2">
               {c.currentHP}/{c.maxHP}
             </span>
-            <span className="text-[11px] text-slate-500 whitespace-nowrap">AC {c.AC}</span>
-            <span className="hidden sm:inline text-[11px] text-slate-500 whitespace-nowrap">
+            <span className="text-[11px] text-app-subtle whitespace-nowrap">AC {c.AC}</span>
+            <span className="hidden sm:inline text-[11px] text-app-subtle whitespace-nowrap">
               PP {c.passivePerception}
             </span>
           </div>
@@ -120,7 +120,7 @@ export default function CombatantCard({
                   <span
                     key={cid}
                     title={def.description}
-                    className="text-[10px] px-1.5 py-0.5 rounded bg-purple-900/60 text-purple-200"
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-condition-soft/60 text-condition-fg"
                   >
                     {def.name}
                   </span>
@@ -131,7 +131,7 @@ export default function CombatantCard({
                 return count ? (
                   <span
                     key={n}
-                    className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-100"
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-strategy-soft/60 text-strategy-fg"
                   >
                     {n} {count}
                   </span>
@@ -140,13 +140,13 @@ export default function CombatantCard({
             </div>
           )}
         </div>
-        <div className="text-slate-500 text-lg ml-1 shrink-0 self-center">
+        <div className="text-app-subtle text-lg ml-1 shrink-0 self-center">
           {expanded ? '▾' : '▸'}
         </div>
       </button>
 
       {expanded && (
-        <div className="px-2 sm:px-3 pb-3 pt-2 border-t border-slate-800 space-y-3">
+        <div className="px-2 sm:px-3 pb-3 pt-2 border-t border-app-line space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex gap-1 flex-1 min-w-0">
               <input
@@ -210,7 +210,7 @@ export default function CombatantCard({
                 Heal
               </button>
             </div>
-            <span className="text-xs text-slate-400 ml-auto">
+            <span className="text-xs text-app-muted ml-auto">
               Status{' '}
               <span className={`px-1.5 py-0.5 rounded ${hpStatusColor(status)} text-xs`}>
                 {status}
@@ -220,7 +220,7 @@ export default function CombatantCard({
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-wide text-slate-400">
+              <span className="text-[10px] uppercase tracking-wide text-app-muted">
                 Initiative
               </span>
               <input
@@ -233,7 +233,7 @@ export default function CombatantCard({
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-wide text-slate-400">
+              <span className="text-[10px] uppercase tracking-wide text-app-muted">
                 Max HP
               </span>
               <input
@@ -246,7 +246,7 @@ export default function CombatantCard({
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-wide text-slate-400">AC</span>
+              <span className="text-[10px] uppercase tracking-wide text-app-muted">AC</span>
               <input
                 type="number"
                 value={c.AC}
@@ -257,7 +257,7 @@ export default function CombatantCard({
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-wide text-slate-400">
+              <span className="text-[10px] uppercase tracking-wide text-app-muted">
                 Passive Perception
               </span>
               <input
@@ -274,7 +274,7 @@ export default function CombatantCard({
           </div>
 
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">
+            <div className="text-[10px] uppercase tracking-wide text-app-muted mb-1">
               Conditions
             </div>
             <div className="flex flex-wrap gap-1">
@@ -287,8 +287,8 @@ export default function CombatantCard({
                     onClick={() => toggleCondition(c.id, cond.id)}
                     className={`text-xs px-2 py-1 rounded transition ${
                       active
-                        ? 'bg-purple-700 text-white hover:bg-purple-600'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                        ? 'bg-condition-solid text-white hover:brightness-110'
+                        : 'bg-app-elev text-app-muted hover:bg-app-elev-2'
                     }`}
                   >
                     {cond.name}
@@ -300,7 +300,7 @@ export default function CombatantCard({
 
           {labelNames.length > 0 && (
             <div>
-              <div className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">
+              <div className="text-[10px] uppercase tracking-wide text-app-muted mb-1">
                 Strategy labels
               </div>
               <div className="flex flex-wrap gap-1">
@@ -311,8 +311,8 @@ export default function CombatantCard({
                       key={name}
                       className={`flex items-center rounded overflow-hidden text-xs ${
                         count > 0
-                          ? 'bg-amber-800 text-amber-50'
-                          : 'bg-slate-800 text-slate-400'
+                          ? 'bg-strategy-solid text-white'
+                          : 'bg-app-elev text-app-muted'
                       }`}
                     >
                       <button
@@ -339,7 +339,7 @@ export default function CombatantCard({
           )}
 
           <div>
-            <label className="text-[10px] uppercase tracking-wide text-slate-400 block mb-1">
+            <label className="text-[10px] uppercase tracking-wide text-app-muted block mb-1">
               Notes
             </label>
             <textarea
@@ -350,8 +350,8 @@ export default function CombatantCard({
             />
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap pt-2 border-t border-slate-800">
-            <label className="flex items-center gap-1 text-xs text-slate-400">
+          <div className="flex items-center gap-3 flex-wrap pt-2 border-t border-app-line">
+            <label className="flex items-center gap-1 text-xs text-app-muted">
               <input
                 type="checkbox"
                 checked={c.nameVisibleToPlayers}
@@ -359,7 +359,7 @@ export default function CombatantCard({
               />
               Show name to players
             </label>
-            <label className="flex items-center gap-1 text-xs text-slate-400">
+            <label className="flex items-center gap-1 text-xs text-app-muted">
               <input
                 type="checkbox"
                 checked={c.isDead}

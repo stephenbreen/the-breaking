@@ -19,8 +19,8 @@ export default function Hourglass({
 
   const r = Math.max(0, Math.min(1, total > 0 ? remaining / total : 0))
   const sand = danger ? '#ef4444' : '#f59e0b'
-  const frame = danger ? '#fca5a5' : '#94a3b8'
-  const bulbFill = 'rgba(148, 163, 184, 0.08)'
+  const frame = danger ? '#fca5a5' : 'rgb(var(--app-muted))'
+  const bulbFill = 'rgb(var(--app-muted) / 0.12)'
 
   const topSandY = (1 - r) * 100
   const topSandH = r * 100

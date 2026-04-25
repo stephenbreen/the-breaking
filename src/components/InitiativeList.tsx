@@ -18,8 +18,8 @@ export default function InitiativeList({
 
   if (combatants.length === 0) {
     return (
-      <div className="text-slate-500 text-sm p-6 border border-dashed border-slate-700 rounded text-center">
-        No combatants yet. Click <b className="text-slate-300">+ Add</b> to start an encounter.
+      <div className="text-app-subtle text-sm p-6 border border-dashed border-app-line-2 rounded text-center">
+        No combatants yet. Click <b className="text-app-fg-2">+ Add</b> to start an encounter.
       </div>
     )
   }

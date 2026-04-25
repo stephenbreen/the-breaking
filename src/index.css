@@ -8,23 +8,159 @@ body,
   height: 100%;
 }
 
+:root,
+[data-theme='midnight'] {
+  --app-bg: 2 6 23;
+  --app-surface: 15 23 42;
+  --app-elev: 30 41 59;
+  --app-elev-2: 51 65 85;
+  --app-fg: 241 245 249;
+  --app-fg-2: 226 232 240;
+  --app-muted: 148 163 184;
+  --app-subtle: 100 116 139;
+  --app-line: 30 41 59;
+  --app-line-2: 51 65 85;
+
+  --accent: 99 102 241;
+  --accent-soft: 30 27 75;
+  --accent-fg: 165 180 252;
+  --accent-ring: 99 102 241;
+
+  --pc-soft: 6 78 59;
+  --pc-fg: 167 243 208;
+  --pc-solid: 5 150 105;
+
+  --npc-soft: 127 29 29;
+  --npc-fg: 254 202 202;
+  --npc-solid: 220 38 38;
+
+  --condition-soft: 88 28 135;
+  --condition-fg: 233 213 255;
+  --condition-solid: 126 34 206;
+
+  --strategy-soft: 120 53 15;
+  --strategy-fg: 254 243 199;
+  --strategy-solid: 146 64 14;
+
+  --warn: 245 158 11;
+  --warn-soft: 69 26 3;
+  --warn-fg: 252 211 77;
+
+  --danger: 220 38 38;
+  --danger-soft: 153 27 27;
+
+  --hp-good: 16 185 129;
+  --hp-warn: 245 158 11;
+  --hp-bad: 239 68 68;
+}
+
+[data-theme='dusk'] {
+  --app-bg: 30 41 59;
+  --app-surface: 51 65 85;
+  --app-elev: 71 85 105;
+  --app-elev-2: 100 116 139;
+  --app-fg: 248 250 252;
+  --app-fg-2: 241 245 249;
+  --app-muted: 203 213 225;
+  --app-subtle: 148 163 184;
+  --app-line: 71 85 105;
+  --app-line-2: 100 116 139;
+
+  --accent: 129 140 248;
+  --accent-soft: 49 46 129;
+  --accent-fg: 199 210 254;
+  --accent-ring: 129 140 248;
+
+  --pc-soft: 6 95 70;
+  --pc-fg: 209 250 229;
+  --pc-solid: 5 150 105;
+
+  --npc-soft: 153 27 27;
+  --npc-fg: 254 226 226;
+  --npc-solid: 220 38 38;
+
+  --condition-soft: 107 33 168;
+  --condition-fg: 243 232 255;
+  --condition-solid: 147 51 234;
+
+  --strategy-soft: 146 64 14;
+  --strategy-fg: 254 243 199;
+  --strategy-solid: 180 83 9;
+
+  --warn: 251 191 36;
+  --warn-soft: 92 38 10;
+  --warn-fg: 253 230 138;
+
+  --danger: 239 68 68;
+  --danger-soft: 153 27 27;
+
+  --hp-good: 34 197 94;
+  --hp-warn: 251 191 36;
+  --hp-bad: 239 68 68;
+}
+
+[data-theme='parchment'] {
+  --app-bg: 245 236 217;
+  --app-surface: 237 226 200;
+  --app-elev: 227 214 185;
+  --app-elev-2: 214 198 158;
+  --app-fg: 41 37 36;
+  --app-fg-2: 68 64 60;
+  --app-muted: 87 83 78;
+  --app-subtle: 120 113 108;
+  --app-line: 188 171 139;
+  --app-line-2: 168 152 118;
+
+  --accent: 67 56 202;
+  --accent-soft: 224 231 255;
+  --accent-fg: 49 46 129;
+  --accent-ring: 99 102 241;
+
+  --pc-soft: 209 250 229;
+  --pc-fg: 6 78 59;
+  --pc-solid: 4 120 87;
+
+  --npc-soft: 254 226 226;
+  --npc-fg: 153 27 27;
+  --npc-solid: 185 28 28;
+
+  --condition-soft: 233 213 255;
+  --condition-fg: 88 28 135;
+  --condition-solid: 126 34 206;
+
+  --strategy-soft: 254 243 199;
+  --strategy-fg: 120 53 15;
+  --strategy-solid: 180 83 9;
+
+  --warn: 180 83 9;
+  --warn-soft: 254 243 199;
+  --warn-fg: 120 53 15;
+
+  --danger: 185 28 28;
+  --danger-soft: 254 202 202;
+
+  --hp-good: 21 128 61;
+  --hp-warn: 180 83 9;
+  --hp-bad: 185 28 28;
+}
+
 body {
-  @apply bg-slate-950 text-slate-100;
+  @apply bg-app-bg text-app-fg;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 @layer components {
   .btn {
-    @apply px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 active:bg-slate-800 text-sm text-slate-100 transition disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply px-3 py-1.5 rounded bg-app-elev-2 hover:brightness-110 active:brightness-95 text-sm text-app-fg transition disabled:opacity-40 disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-sm text-white transition disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply px-3 py-1.5 rounded bg-accent hover:brightness-110 active:brightness-95 text-sm text-white transition disabled:opacity-40 disabled:cursor-not-allowed;
   }
   .btn-danger {
-    @apply px-3 py-1.5 rounded bg-red-600 hover:bg-red-500 active:bg-red-700 text-sm text-white transition disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply px-3 py-1.5 rounded bg-danger hover:brightness-110 active:brightness-95 text-sm text-white transition disabled:opacity-40 disabled:cursor-not-allowed;
   }
   .input {
-    @apply bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-indigo-500;
+    @apply bg-app-elev border border-app-line-2 rounded px-2 py-1 text-sm text-app-fg focus:outline-none focus:border-accent;
   }
 }
 
@@ -34,12 +170,12 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: rgb(var(--app-surface));
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: rgb(var(--app-elev-2));
   border-radius: 5px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: rgb(var(--app-muted));
 }

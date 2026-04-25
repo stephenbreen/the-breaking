@@ -57,27 +57,27 @@ export default function TablesPanel() {
   return (
     <div className="flex flex-col sm:flex-row h-full min-h-0">
       {/* Mobile: horizontal scrolling list of tables. Desktop: vertical sidebar. */}
-      <div className="sm:w-44 border-b sm:border-b-0 sm:border-r border-slate-800 flex sm:flex-col shrink-0">
+      <div className="sm:w-44 border-b sm:border-b-0 sm:border-r border-app-line flex sm:flex-col shrink-0">
         <div className="flex sm:flex-col flex-1 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto">
           {tables.map((t) => (
             <button
               key={t.id}
               onClick={() => setSelectedId(t.id)}
-              className={`text-left px-3 py-2 text-sm sm:border-b border-slate-800 truncate shrink-0 sm:w-full whitespace-nowrap ${
+              className={`text-left px-3 py-2 text-sm sm:border-b border-app-line truncate shrink-0 sm:w-full whitespace-nowrap ${
                 selectedId === t.id
-                  ? 'bg-slate-800 text-white'
-                  : 'text-slate-400 hover:bg-slate-900'
+                  ? 'bg-app-elev text-app-fg'
+                  : 'text-app-muted hover:bg-app-surface'
               }`}
               title={t.name}
             >
               {t.name}
               {t.builtIn && (
-                <span className="ml-1 text-[9px] text-indigo-400">★</span>
+                <span className="ml-1 text-[9px] text-accent-fg">★</span>
               )}
             </button>
           ))}
         </div>
-        <div className="flex sm:block gap-1 p-2 sm:space-y-1 border-l sm:border-l-0 sm:border-t border-slate-800 shrink-0">
+        <div className="flex sm:block gap-1 p-2 sm:space-y-1 border-l sm:border-l-0 sm:border-t border-app-line shrink-0">
           <button
             onClick={() => {
               const name = prompt('New table name:')
@@ -101,7 +101,7 @@ export default function TablesPanel() {
             onDelete={() => removeTable(selected.id)}
           />
         ) : (
-          <div className="p-6 text-slate-500 text-sm">
+          <div className="p-6 text-app-subtle text-sm">
             Select or create a table.
           </div>
         )}
@@ -176,13 +176,13 @@ function TableEditor({ table, onDelete }: { table: RollTable; onDelete: () => vo
         </button>
       </div>
       {lastRoll && (
-        <div className="rounded p-3 bg-amber-900/40 border border-amber-700">
-          <div className="text-xs text-amber-300">
+        <div className="rounded p-3 bg-strategy-soft/40 border border-warn">
+          <div className="text-xs text-warn-fg">
             Rolled {table.dice} → <b>{lastRoll.roll}</b>
           </div>
           <div className="text-sm mt-1">
             {lastRoll.entry?.text ?? (
-              <em className="text-slate-500">No matching entry for this roll.</em>
+              <em className="text-app-subtle">No matching entry for this roll.</em>
             )}
           </div>
         </div>
@@ -204,7 +204,7 @@ function TableEditor({ table, onDelete }: { table: RollTable; onDelete: () => vo
             />
             <button
               onClick={() => removeEntry(e.id)}
-              className="btn text-red-400"
+              className="btn text-danger"
               title="Remove entry"
             >
               ×

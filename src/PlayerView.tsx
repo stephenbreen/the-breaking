@@ -2,6 +2,7 @@ import { useStore } from './store'
 import { CONDITIONS } from './data/conditions'
 import { hpStatus, hpStatusColor } from './utils/hpStatus'
 import Hourglass from './components/Hourglass'
+import { useThemeAttribute } from './hooks/useThemeAttribute'
 
 export default function PlayerView() {
   const combatants = useStore((s) => s.combatants)
@@ -12,20 +13,22 @@ export default function PlayerView() {
   const timerRunning = useStore((s) => s.timerRunning)
   const labelNames = useStore((s) => s.strategyLabelNames)
 
+  useThemeAttribute()
+
   const danger = timerRemaining <= 10 && timerRunning
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="flex items-center gap-6 px-8 py-4 border-b border-slate-800 bg-slate-900 sticky top-0 z-10">
+    <div className="min-h-screen bg-app-bg text-app-fg">
+      <header className="flex items-center gap-6 px-8 py-4 border-b border-app-line bg-app-surface sticky top-0 z-10">
         <h1 className="text-3xl font-bold tracking-tight">⚔ The Breaking</h1>
         <div className="flex-1" />
         <div className="text-center">
-          <div className="text-xs uppercase tracking-widest text-slate-400">Round</div>
+          <div className="text-xs uppercase tracking-widest text-app-muted">Round</div>
           <div className="text-6xl font-bold leading-none tabular-nums">{round}</div>
         </div>
         <div
           className={`flex items-center gap-5 rounded-lg px-6 py-3 transition-colors ${
-            danger ? 'bg-red-900/60 animate-pulse' : 'bg-slate-800'
+            danger ? 'bg-npc-soft/60 animate-pulse' : 'bg-app-elev'
           }`}
         >
           <Hourglass
@@ -36,17 +39,17 @@ export default function PlayerView() {
             size={140}
           />
           <div className="text-left">
-            <div className="text-xs uppercase tracking-widest text-slate-300">
+            <div className="text-xs uppercase tracking-widest text-app-fg-2">
               Turn Timer
             </div>
             <div
               className={`font-mono font-black leading-none tabular-nums ${
-                danger ? 'text-red-200' : 'text-white'
+                danger ? 'text-npc-fg' : 'text-app-fg'
               }`}
               style={{ fontSize: '7rem' }}
             >
               {timerRemaining}
-              <span className="text-4xl text-slate-400 font-normal ml-1">s</span>
+              <span className="text-4xl text-app-muted font-normal ml-1">s</span>
             </div>
           </div>
         </div>
@@ -54,7 +57,7 @@ export default function PlayerView() {
 
       <main className="p-8">
         {combatants.length === 0 ? (
-          <div className="text-center text-slate-500 text-xl py-24">
+          <div className="text-center text-app-subtle text-xl py-24">
             Waiting for the DM…
           </div>
         ) : (
@@ -68,16 +71,16 @@ export default function PlayerView() {
                   key={c.id}
                   className={`rounded-lg p-4 flex items-center gap-4 transition-all ${
                     isCurrent
-                      ? 'bg-indigo-950/60 border-2 border-indigo-400 shadow-lg shadow-indigo-500/20 scale-[1.01]'
-                      : 'bg-slate-900 border border-slate-800'
+                      ? 'bg-accent-soft/60 border-2 border-accent shadow-lg shadow-accent/20 scale-[1.01]'
+                      : 'bg-app-surface border border-app-line'
                   }`}
                 >
                   <div
                     className={`w-16 h-16 rounded flex flex-col items-center justify-center shrink-0 ${
-                      isCurrent ? 'bg-indigo-900' : 'bg-slate-800'
+                      isCurrent ? 'bg-accent-soft' : 'bg-app-elev'
                     }`}
                   >
-                    <div className="text-[10px] uppercase tracking-wide text-slate-400">INIT</div>
+                    <div className="text-[10px] uppercase tracking-wide text-app-muted">INIT</div>
                     <div className="text-2xl font-bold leading-none">{c.initiative}</div>
                   </div>
                   <div className="flex-1 min-w-0">
@@ -98,7 +101,7 @@ export default function PlayerView() {
                           <span
                             key={cid}
                             title={def.description}
-                            className="text-xs px-2 py-1 rounded bg-purple-900 text-purple-100"
+                            className="text-xs px-2 py-1 rounded bg-condition-soft text-condition-fg"
                           >
                             {def.name}
                           </span>
@@ -109,7 +112,7 @@ export default function PlayerView() {
                         return count && count > 0 ? (
                           <span
                             key={n}
-                            className="text-xs px-2 py-1 rounded bg-amber-800 text-amber-50"
+                            className="text-xs px-2 py-1 rounded bg-strategy-solid text-white"
                           >
                             {n} {count}
                           </span>
@@ -118,7 +121,7 @@ export default function PlayerView() {
                     </div>
                   </div>
                   {isCurrent && (
-                    <div className="text-indigo-300 text-lg font-bold whitespace-nowrap">
+                    <div className="text-accent-fg text-lg font-bold whitespace-nowrap">
                       ◀ ACTIVE
                     </div>
                   )}

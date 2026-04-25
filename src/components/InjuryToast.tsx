@@ -37,38 +37,38 @@ export default function InjuryToast() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-[26rem] max-w-[95vw] bg-slate-900 border-2 border-amber-500 rounded-lg shadow-2xl p-4 space-y-3">
+    <div className="fixed bottom-4 right-4 z-40 w-[26rem] max-w-[95vw] bg-app-surface border-2 border-warn rounded-lg shadow-2xl p-4 space-y-3">
       <div className="flex items-start gap-2">
         <span className="text-2xl" aria-hidden>
           ⚠️
         </span>
         <div className="flex-1">
-          <div className="font-bold text-amber-300">
+          <div className="font-bold text-warn-fg">
             Massive damage — {trigger.threshold}% threshold
           </div>
-          <div className="text-sm text-slate-300 mt-1">
+          <div className="text-sm text-app-fg-2 mt-1">
             <b>{trigger.combatantName}</b> took {trigger.damage} damage (
             {Math.round(trigger.pct)}% of max HP).
           </div>
           {table ? (
-            <div className="text-xs text-slate-400 mt-1">
+            <div className="text-xs text-app-muted mt-1">
               Have the player roll <b>{table.dice}</b> on "{table.name}", or click Roll.
             </div>
           ) : (
-            <div className="text-xs text-red-400 mt-1">
+            <div className="text-xs text-danger mt-1">
               No injury table configured for {trigger.threshold}%.
             </div>
           )}
         </div>
       </div>
       {rolled && (
-        <div className="rounded p-2 bg-amber-950 border border-amber-700 text-sm">
-          <div className="text-xs text-amber-400">
+        <div className="rounded p-2 bg-warn-soft border border-warn text-sm">
+          <div className="text-xs text-warn-fg">
             {rolled.tableName}: rolled <b>{rolled.roll}</b>
           </div>
           <div className="mt-1">
             {rolled.text ?? (
-              <em className="text-slate-500">No matching entry.</em>
+              <em className="text-app-subtle">No matching entry.</em>
             )}
           </div>
         </div>

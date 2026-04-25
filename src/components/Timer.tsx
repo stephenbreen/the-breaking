@@ -21,7 +21,7 @@ export default function Timer() {
   return (
     <div
       className={`flex items-center gap-1 sm:gap-2 rounded px-2 sm:px-3 py-1 ${
-        danger ? 'bg-red-700 animate-pulse' : 'bg-slate-800'
+        danger ? 'bg-danger-soft animate-pulse' : 'bg-app-elev'
       }`}
     >
       <span className="text-lg sm:text-2xl font-mono font-bold w-10 sm:w-14 text-center">

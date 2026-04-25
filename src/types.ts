@@ -39,6 +39,26 @@ export type TriggerInfo = {
   pct: number
 }
 
+export type Theme = 'midnight' | 'dusk' | 'parchment'
+
+export const THEMES: { id: Theme; label: string; description: string }[] = [
+  {
+    id: 'midnight',
+    label: 'Midnight',
+    description: 'Deep slate. Best for low-light play.',
+  },
+  {
+    id: 'dusk',
+    label: 'Dusk',
+    description: 'Lighter slate. Easy on eyes in normal indoor light.',
+  },
+  {
+    id: 'parchment',
+    label: 'Parchment',
+    description: 'Warm cream. Best for bright rooms or table reading.',
+  },
+]
+
 export type EncounterState = {
   combatants: Combatant[]
   currentTurnIndex: number
@@ -50,4 +70,5 @@ export type EncounterState = {
   strategyLabelNames: string[]
   tables: RollTable[]
   lastTrigger: TriggerInfo | null
+  theme: Theme
 }
