@@ -1,8 +1,11 @@
+import { useEffect, useRef } from 'react'
 import { useStore } from './store'
 import { CONDITIONS } from './data/conditions'
 import { hpStatus, hpStatusColor } from './utils/hpStatus'
 import Hourglass from './components/Hourglass'
 import PlayerInjuryBanner from './components/PlayerInjuryBanner'
+import CombatantIcon from './components/CombatantIcon'
+import { classLabel } from './data/playerClasses'
 
 export default function PlayerView() {
   const combatants = useStore((s) => s.combatants)
@@ -12,6 +15,12 @@ export default function PlayerView() {
   const timerSeconds = useStore((s) => s.timerSeconds)
   const timerRunning = useStore((s) => s.timerRunning)
   const labelNames = useStore((s) => s.strategyLabelNames)
+
+  const activeRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [currentIdx, combatants.length])
 
   const danger = timerRemaining <= 10 && timerRunning
 
@@ -68,12 +77,37 @@ export default function PlayerView() {
               return (
                 <div
                   key={c.id}
-                  className={`rounded-lg p-4 flex items-center gap-4 transition-all ${
+                  ref={isCurrent ? activeRef : undefined}
+                  className={`rounded-lg p-4 flex items-center gap-4 transition-all scroll-mt-32 ${
                     isCurrent
                       ? 'bg-indigo-950/60 border-2 border-indigo-400 shadow-lg shadow-indigo-500/20 scale-[1.01]'
                       : 'bg-slate-900 border border-slate-800'
                   }`}
                 >
+                  <div
+                    className={`w-14 h-14 rounded flex items-center justify-center shrink-0 ${
+                      c.type === 'monster'
+                        ? 'bg-red-900/30 text-red-200'
+                        : isCurrent
+                        ? 'bg-indigo-900 text-slate-100'
+                        : 'bg-slate-800 text-slate-300'
+                    }`}
+                    title={
+                      c.type === 'monster'
+                        ? 'Monster / NPC'
+                        : classLabel(c.playerClass)
+                    }
+                  >
+                    <CombatantIcon
+                      c={c}
+                      size={36}
+                      title={
+                        c.type === 'monster'
+                          ? 'Monster / NPC'
+                          : classLabel(c.playerClass)
+                      }
+                    />
+                  </div>
                   <div
                     className={`w-16 h-16 rounded flex flex-col items-center justify-center shrink-0 ${
                       isCurrent ? 'bg-indigo-900' : 'bg-slate-800'

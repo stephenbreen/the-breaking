@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from './store'
 import Timer from './components/Timer'
 import InitiativeList from './components/InitiativeList'
@@ -8,9 +8,9 @@ import InjuryToast from './components/InjuryToast'
 import EncounterMenu from './components/EncounterMenu'
 import SettingsPanel from './components/SettingsPanel'
 import AddCombatantModal from './components/AddCombatantModal'
+import HelpModal from './components/HelpModal'
 
 type Tab = 'initiative' | 'dice' | 'tables' | 'settings'
-export type FocusTarget = 'heal' | 'damage' | null
 
 export default function App() {
   const round = useStore((s) => s.round)
@@ -18,56 +18,92 @@ export default function App() {
   const currentIdx = useStore((s) => s.currentTurnIndex)
   const nextTurn = useStore((s) => s.nextTurn)
   const previousTurn = useStore((s) => s.previousTurn)
+  const setTimerRunning = useStore((s) => s.setTimerRunning)
+  const timerRunning = useStore((s) => s.timerRunning)
+  const resetTimer = useStore((s) => s.resetTimer)
   const [addOpen, setAddOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
   const [tab, setTab] = useState<Tab>('initiative')
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [pendingFocus, setPendingFocus] = useState<FocusTarget>(null)
 
   const current = combatants[currentIdx]
 
-  const clearPendingFocus = useCallback(() => setPendingFocus(null), [])
-
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
+    const onKey = (e: KeyboardEvent) => {
+      // Skip while typing into form fields, contenteditable, or while a
+      // modal owns the keyboard (each modal handles its own Esc).
+      const t = e.target as HTMLElement | null
+      if (
+        t &&
+        (t.tagName === 'INPUT' ||
+          t.tagName === 'TEXTAREA' ||
+          t.tagName === 'SELECT' ||
+          t.isContentEditable)
+      ) {
+        return
+      }
+      if (addOpen || helpOpen) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
-      const target = e.target as HTMLElement | null
-      if (target) {
-        const tag = target.tagName
-        if (
-          tag === 'INPUT' ||
-          tag === 'TEXTAREA' ||
-          tag === 'SELECT' ||
-          target.isContentEditable
-        ) {
-          return
+
+      switch (e.key) {
+        case '?':
+          e.preventDefault()
+          setHelpOpen(true)
+          break
+        case ' ':
+        case 'ArrowRight':
+        case 'n':
+        case 'N':
+          if (combatants.length === 0) return
+          e.preventDefault()
+          nextTurn()
+          break
+        case 'ArrowLeft':
+        case 'p':
+        case 'P':
+          if (combatants.length === 0) return
+          e.preventDefault()
+          previousTurn()
+          break
+        case 'a':
+        case 'A':
+          e.preventDefault()
+          setAddOpen(true)
+          break
+        case 't':
+        case 'T':
+          e.preventDefault()
+          setTimerRunning(!timerRunning)
+          break
+        case 'r':
+        case 'R':
+          e.preventDefault()
+          resetTimer()
+          break
+        case 'h':
+        case 'H': {
+          if (combatants.length === 0) return
+          e.preventDefault()
+          // Make sure the active row is visible (mobile may be on another tab)
+          // before its quick HP input gets focused.
+          setTab('initiative')
+          window.dispatchEvent(new CustomEvent('focus-active-hp'))
+          break
         }
       }
-      if (combatants.length === 0) return
-
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault()
-        previousTurn()
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault()
-        nextTurn()
-      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        const cur = combatants[currentIdx]
-        if (!cur) return
-        e.preventDefault()
-        setTab('initiative')
-        setExpandedId(cur.id)
-        setPendingFocus(e.key === 'ArrowUp' ? 'heal' : 'damage')
-      } else if (e.key === ' ' || e.code === 'Space') {
-        const cur = combatants[currentIdx]
-        if (!cur) return
-        e.preventDefault()
-        setTab('initiative')
-        setExpandedId((prev) => (prev === cur.id ? null : cur.id))
-      }
     }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [combatants, currentIdx, nextTurn, previousTurn])
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [
+    addOpen,
+    helpOpen,
+    combatants.length,
+    nextTurn,
+    previousTurn,
+    setTimerRunning,
+    timerRunning,
+    resetTimer,
+  ])
 
   const openPlayerView = () => {
     const url = window.location.pathname + '?view=player'
@@ -137,6 +173,14 @@ export default function App() {
           Player View ↗
         </button>
         <EncounterMenu />
+        <button
+          onClick={() => setHelpOpen(true)}
+          className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-sm font-bold flex items-center justify-center transition"
+          title="Help — how to use this app (?)"
+          aria-label="Open help"
+        >
+          ?
+        </button>
       </header>
 
       {/* Mobile tab bar */}
@@ -173,8 +217,6 @@ export default function App() {
             <InitiativeList
               expandedId={expandedId}
               setExpandedId={setExpandedId}
-              pendingFocus={pendingFocus}
-              clearPendingFocus={clearPendingFocus}
             />
           </div>
         </div>
@@ -206,6 +248,7 @@ export default function App() {
       </div>
 
       <AddCombatantModal open={addOpen} onClose={() => setAddOpen(false)} />
+      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
       <InjuryToast />
     </div>
   )

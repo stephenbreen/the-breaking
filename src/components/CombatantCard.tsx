@@ -1,24 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store'
-import type { Combatant } from '../types'
+import type { Combatant, PlayerClassId } from '../types'
 import { CONDITIONS } from '../data/conditions'
 import { hpStatus, hpStatusColor } from '../utils/hpStatus'
-import type { FocusTarget } from '../App'
+import { PLAYER_CLASSES, classLabel } from '../data/playerClasses'
+import CombatantIcon from './CombatantIcon'
 
 export default function CombatantCard({
   c,
   isCurrent,
   expanded,
   onToggle,
-  pendingFocus,
-  clearPendingFocus,
 }: {
   c: Combatant
   isCurrent: boolean
   expanded: boolean
   onToggle: () => void
-  pendingFocus: FocusTarget
-  clearPendingFocus: () => void
 }) {
   const update = useStore((s) => s.updateCombatant)
   const remove = useStore((s) => s.removeCombatant)
@@ -28,41 +25,96 @@ export default function CombatantCard({
   const labelNames = useStore((s) => s.strategyLabelNames)
   const setStrategyStack = useStore((s) => s.setStrategyStack)
 
+  // Row-header quick HP control — keyboard-driven (Enter / Shift+Enter).
+  const [quick, setQuick] = useState('')
+  const quickInputRef = useRef<HTMLInputElement>(null)
+
+  // Expanded-view controls — click-driven dual inputs.
   const [dmg, setDmg] = useState('')
   const [hl, setHl] = useState('')
-  const dmgRef = useRef<HTMLInputElement>(null)
-  const hlRef = useRef<HTMLInputElement>(null)
+
+  const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!isCurrent || !expanded || !pendingFocus) return
-    const ref = pendingFocus === 'heal' ? hlRef : dmgRef
-    const el = ref.current
-    if (!el) return
-    el.focus()
-    el.select()
-    clearPendingFocus()
-  }, [isCurrent, expanded, pendingFocus, clearPendingFocus])
+    if (isCurrent) {
+      rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [isCurrent])
+
+  useEffect(() => {
+    if (!isCurrent) return
+    const handler = () => {
+      const el = quickInputRef.current
+      if (!el) return
+      el.focus()
+      el.select()
+    }
+    window.addEventListener('focus-active-hp', handler)
+    return () => window.removeEventListener('focus-active-hp', handler)
+  }, [isCurrent])
 
   const pct = Math.max(0, Math.min(100, (c.currentHP / Math.max(1, c.maxHP)) * 100))
   const status = hpStatus(c)
 
+  const applyQuick = (kind: 'damage' | 'heal') => {
+    const n = parseInt(quick, 10)
+    if (!n || n <= 0) return
+    if (kind === 'damage') damage(c.id, n)
+    else heal(c.id, n)
+    setQuick('')
+  }
+
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation()
+
   return (
     <div
-      className={`mb-2 rounded-lg border transition-colors ${
+      ref={rootRef}
+      className={`mb-2 rounded-lg border transition-colors scroll-mt-24 ${
         isCurrent
           ? 'border-indigo-400 bg-indigo-950/40 ring-2 ring-indigo-500/30'
           : 'border-slate-800 bg-slate-900'
       }`}
     >
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
         onClick={onToggle}
-        className="w-full flex items-start gap-2 sm:gap-3 px-2 sm:px-3 py-2 text-left hover:bg-white/5"
+        onKeyDown={(e) => {
+          // Toggle only when this row itself owns focus, not a child input.
+          if (
+            (e.key === 'Enter' || e.key === ' ') &&
+            e.currentTarget === e.target
+          ) {
+            e.preventDefault()
+            onToggle()
+          }
+        }}
+        className="w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 text-left hover:bg-white/5 cursor-pointer select-none"
       >
+        {/* Class / monster icon */}
+        <div
+          className={`w-10 h-10 sm:w-11 sm:h-11 rounded flex items-center justify-center shrink-0 ${
+            c.type === 'monster'
+              ? 'bg-red-900/40 text-red-200'
+              : isCurrent
+              ? 'bg-indigo-900 text-slate-100'
+              : 'bg-slate-800 text-slate-200'
+          }`}
+          title={c.type === 'monster' ? 'Monster / NPC' : classLabel(c.playerClass)}
+        >
+          <CombatantIcon
+            c={c}
+            size={24}
+            title={c.type === 'monster' ? 'Monster / NPC' : classLabel(c.playerClass)}
+          />
+        </div>
+
         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded bg-slate-800 flex flex-col items-center justify-center text-xs shrink-0">
           <div className="text-slate-400 text-[9px] sm:text-[10px]">INIT</div>
           <div className="font-bold text-sm sm:text-base leading-none">{c.initiative}</div>
         </div>
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="font-semibold truncate">{c.name}</span>
@@ -81,14 +133,14 @@ export default function CombatantCard({
             {!c.nameVisibleToPlayers && (
               <span
                 className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400"
-                title="Name is hidden from players (?)"
+                title="Name is hidden from players"
               >
                 👁‍🗨 hidden
               </span>
             )}
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <div className="flex-1 h-2 bg-slate-800 rounded overflow-hidden">
+            <div className="flex-1 h-2 bg-slate-800 rounded overflow-hidden min-w-[4rem]">
               <div
                 className={`h-full transition-all ${
                   pct > 50
@@ -140,17 +192,46 @@ export default function CombatantCard({
             </div>
           )}
         </div>
+
+        {/* Quick HP input — keyboard-first; H focuses this on the active row.
+            Hidden on small screens to keep the mobile row uncluttered; mobile
+            users tap to expand and use the dual inputs below. */}
+        <div
+          className="hidden sm:flex items-center shrink-0"
+          onClick={stop}
+          onKeyDown={stop}
+        >
+          <input
+            ref={quickInputRef}
+            type="number"
+            inputMode="numeric"
+            placeholder="HP"
+            value={quick}
+            onChange={(e) => setQuick(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                applyQuick(e.shiftKey ? 'heal' : 'damage')
+              } else if (e.key === 'Escape') {
+                setQuick('')
+                e.currentTarget.blur()
+              }
+            }}
+            className="input w-14 text-center"
+            title="Enter damages · Shift+Enter heals · ↑/↓ steps · Esc clears"
+          />
+        </div>
+
         <div className="text-slate-500 text-lg ml-1 shrink-0 self-center">
           {expanded ? '▾' : '▸'}
         </div>
-      </button>
+      </div>
 
       {expanded && (
         <div className="px-2 sm:px-3 pb-3 pt-2 border-t border-slate-800 space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex gap-1 flex-1 min-w-0">
               <input
-                ref={dmgRef}
                 type="number"
                 placeholder="dmg"
                 value={dmg}
@@ -181,7 +262,6 @@ export default function CombatantCard({
             </div>
             <div className="flex gap-1 flex-1 min-w-0">
               <input
-                ref={hlRef}
                 type="number"
                 placeholder="heal"
                 value={hl}
@@ -217,6 +297,28 @@ export default function CombatantCard({
               </span>
             </span>
           </div>
+
+          {c.type === 'pc' && (
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-[10px] uppercase tracking-wide text-slate-400">
+                Class
+              </span>
+              <select
+                value={c.playerClass ?? 'none'}
+                onChange={(e) =>
+                  update(c.id, { playerClass: e.target.value as PlayerClassId })
+                }
+                className="input"
+                title="Sets the icon shown in the player view. Default is the adventurer sword."
+              >
+                {PLAYER_CLASSES.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
             <label className="flex flex-col gap-1">

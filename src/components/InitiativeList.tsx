@@ -1,17 +1,12 @@
 import { useStore } from '../store'
 import CombatantCard from './CombatantCard'
-import type { FocusTarget } from '../App'
 
 export default function InitiativeList({
   expandedId,
   setExpandedId,
-  pendingFocus,
-  clearPendingFocus,
 }: {
   expandedId: string | null
   setExpandedId: (id: string | null) => void
-  pendingFocus: FocusTarget
-  clearPendingFocus: () => void
 }) {
   const combatants = useStore((s) => s.combatants)
   const currentIdx = useStore((s) => s.currentTurnIndex)
@@ -33,8 +28,6 @@ export default function InitiativeList({
           isCurrent={i === currentIdx}
           expanded={expandedId === c.id}
           onToggle={() => setExpandedId(expandedId === c.id ? null : c.id)}
-          pendingFocus={pendingFocus}
-          clearPendingFocus={clearPendingFocus}
         />
       ))}
     </div>

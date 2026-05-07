@@ -32,7 +32,8 @@ export default function SettingsPanel() {
         <p className="text-xs text-slate-400 mb-2">
           A single hit dealing this percentage of max HP triggers the matching
           injury table. When multiple thresholds apply, only the highest fires.
-          Each threshold fires at most once per combatant per encounter.
+          Each combatant can only trigger injury rules once per turn — counters
+          reset automatically on every turn advance.
         </p>
         <div className="flex items-center gap-2">
           <input
@@ -52,8 +53,8 @@ export default function SettingsPanel() {
           />
           <span className="text-slate-400">%</span>
         </div>
-        <button onClick={clearFired} className="btn mt-2 text-xs">
-          Reset triggers for this encounter
+        <button onClick={clearFired} className="btn mt-2 text-xs" title="Manually clear fired triggers (also resets on every turn advance)">
+          Reset injury triggers now
         </button>
       </section>
 

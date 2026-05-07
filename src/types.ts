@@ -1,5 +1,20 @@
 export type CombatantType = 'pc' | 'monster'
 
+export type PlayerClassId =
+  | 'none'
+  | 'barbarian'
+  | 'bard'
+  | 'cleric'
+  | 'druid'
+  | 'fighter'
+  | 'monk'
+  | 'paladin'
+  | 'ranger'
+  | 'rogue'
+  | 'sorcerer'
+  | 'warlock'
+  | 'wizard'
+
 export type Combatant = {
   id: string
   name: string
@@ -15,6 +30,7 @@ export type Combatant = {
   nameVisibleToPlayers: boolean
   isDead: boolean
   firedThresholds: number[]
+  playerClass?: PlayerClassId
 }
 
 export type TableEntry = {

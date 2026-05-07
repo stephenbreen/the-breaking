@@ -147,6 +147,8 @@ export const useStore = create<Store>()(
             round,
             timerRemaining: s.timerSeconds,
             timerRunning: false,
+            // Injury triggers are once-per-turn; clear them on any turn change.
+            combatants: s.combatants.map((c) => ({ ...c, firedThresholds: [] })),
           }
         }),
 
@@ -163,6 +165,7 @@ export const useStore = create<Store>()(
             round,
             timerRemaining: s.timerSeconds,
             timerRunning: false,
+            combatants: s.combatants.map((c) => ({ ...c, firedThresholds: [] })),
           }
         }),
 
@@ -231,6 +234,8 @@ export const useStore = create<Store>()(
               round,
               timerRemaining: s.timerSeconds,
               timerRunning: false,
+              // Injury triggers reset on turn change.
+              combatants: s.combatants.map((c) => ({ ...c, firedThresholds: [] })),
             }
           }
           return { timerRemaining: remaining }
