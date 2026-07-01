@@ -156,7 +156,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-slate-950 text-slate-100">
+    <div className="h-[100dvh] flex flex-col bg-slate-950 text-slate-100">
       <header className="flex items-center gap-2 px-2 sm:px-4 py-2 border-b border-slate-800 bg-slate-900 flex-wrap">
         <h1 className="text-lg sm:text-xl font-bold tracking-tight">
           ⚔ The Breaking
@@ -165,7 +165,9 @@ export default function App() {
           DM
         </span>
         <div className="flex-1 min-w-2" />
-        <div className="flex items-center gap-2">
+        {/* Round / on-turn readout and Prev/Next live in the header on desktop;
+            on mobile they move to the thumb-reachable bottom bar. */}
+        <div className="hidden sm:flex items-center gap-2">
           <div className="text-right">
             <div className="text-[10px] uppercase tracking-widest text-slate-500 leading-none">Round</div>
             <div className="text-lg sm:text-xl font-bold leading-tight">{round}</div>
@@ -179,14 +181,12 @@ export default function App() {
             </div>
           )}
         </div>
-        <div className="flex gap-1">
+        <div className="hidden sm:flex gap-1">
           <button onClick={previousTurn} className="btn" disabled={combatants.length === 0}>
-            <span className="sm:hidden">◀</span>
-            <span className="hidden sm:inline">◀ Prev</span>
+            ◀ Prev
           </button>
           <button onClick={nextTurn} className="btn-primary" disabled={combatants.length === 0}>
-            <span className="sm:hidden">▶</span>
-            <span className="hidden sm:inline">Next ▶</span>
+            Next ▶
           </button>
         </div>
         <Timer />
@@ -236,7 +236,7 @@ export default function App() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 py-2 capitalize text-xs font-medium transition ${
+            className={`flex-1 py-3 capitalize text-sm font-medium transition ${
               tab === t
                 ? 'bg-slate-800 text-white border-b-2 border-indigo-400 -mb-px'
                 : 'text-slate-400 hover:bg-slate-900'
@@ -293,6 +293,37 @@ export default function App() {
           </div>
           <div className="flex-1 overflow-hidden">{renderPanel(sideTab)}</div>
         </div>
+      </div>
+
+      {/* Mobile turn controls — pinned to the bottom for one-handed thumb reach.
+          Part of the flex column (not fixed) so it never overlaps the list, and
+          padded for the iOS home indicator. Prev/Next live in the header on
+          desktop, so this is hidden there. */}
+      <div className="sm:hidden flex items-stretch gap-2 border-t border-slate-800 bg-slate-900 px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <button
+          onClick={previousTurn}
+          disabled={combatants.length === 0}
+          className="btn flex items-center justify-center px-5 text-lg"
+          aria-label="Previous turn"
+        >
+          ◀
+        </button>
+        <div className="flex-1 flex flex-col items-center justify-center min-w-0 leading-none">
+          <div className="text-[10px] uppercase tracking-widest text-slate-500">
+            Round {round}
+          </div>
+          <div className="text-sm font-semibold text-indigo-300 truncate max-w-full mt-0.5">
+            {current ? current.name : '—'}
+          </div>
+        </div>
+        <button
+          onClick={nextTurn}
+          disabled={combatants.length === 0}
+          className="btn-primary flex items-center justify-center gap-1 px-7 text-lg font-bold"
+          aria-label="Next turn"
+        >
+          Next ▶
+        </button>
       </div>
 
       <AddCombatantModal open={addOpen} onClose={() => setAddOpen(false)} />

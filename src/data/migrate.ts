@@ -71,6 +71,19 @@ export function migratePersisted(persisted: unknown): EncounterState {
       copy.firedTriggersRound = Array.isArray(c.firedTriggersRound)
         ? c.firedTriggersRound
         : []
+      // v4: temp HP, death saves, concentration, and timed conditions.
+      copy.tempHP = typeof c.tempHP === 'number' ? c.tempHP : 0
+      copy.deathSaves =
+        c.deathSaves && typeof c.deathSaves === 'object'
+          ? c.deathSaves
+          : { successes: 0, failures: 0 }
+      copy.concentration = typeof c.concentration === 'string' ? c.concentration : null
+      // Conditions became objects (id + rounds + saveEnds); upgrade old strings.
+      copy.conditions = Array.isArray(c.conditions)
+        ? c.conditions.map((x) =>
+            typeof x === 'string' ? { id: x, rounds: null, saveEnds: false } : x
+          )
+        : []
       return copy
     })
   }

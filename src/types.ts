@@ -15,16 +15,32 @@ export type PlayerClassId =
   | 'warlock'
   | 'wizard'
 
+export type DeathSaves = { successes: number; failures: number }
+
+// A condition applied to a combatant, with an optional round timer that
+// auto-decrements on the combatant's turn, and a "save ends" marker.
+export type ActiveCondition = {
+  id: string // references a ConditionDef id
+  rounds: number | null // remaining rounds; null = no timer
+  saveEnds: boolean
+}
+
 export type Combatant = {
   id: string
   name: string
   type: CombatantType
   maxHP: number
   currentHP: number
+  // Temporary hit points — absorbed before real HP, don't stack, not healed.
+  tempHP: number
   AC: number
   passivePerception: number
   initiative: number
-  conditions: string[]
+  // Death saving throws, tracked while a PC is at 0 HP (0–3 each).
+  deathSaves: DeathSaves
+  // Name of the spell/effect this combatant is concentrating on, or null.
+  concentration: string | null
+  conditions: ActiveCondition[]
   strategyLabels: Record<string, number>
   notes: string
   nameVisibleToPlayers: boolean
@@ -60,6 +76,10 @@ export type RollTable = {
 export type TriggerScope = 'any' | 'pc' | 'monster'
 
 export type TriggerEventKind = 'massiveDamage' | 'hpReachedZero' | 'combatantAdded'
+
+// Result kinds include synthetic notices (concentration) that aren't creatable
+// triggers but still surface in the DM toast.
+export type ResultKind = TriggerEventKind | 'concentration'
 
 export type TriggerEvent =
   // A single hit dealing >= percentOfMax % of the target's max HP.
@@ -100,7 +120,7 @@ export type TriggerResult = {
   id: string
   triggerId: string
   triggerName: string
-  eventKind: TriggerEventKind
+  eventKind: ResultKind
   combatantId: string | null
   combatantName: string
   // massiveDamage context

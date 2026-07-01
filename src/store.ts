@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type {
+  ActiveCondition,
   Combatant,
   CombatantType,
   EncounterState,
@@ -24,6 +25,13 @@ import { rollExpression, matchTableEntry } from './utils/dice'
 
 const scopeMatches = (scope: TriggerScope, type: CombatantType): boolean =>
   scope === 'any' || scope === type
+
+// Decrement timed conditions by one round and drop any that expire. Untimed
+// (rounds === null) conditions are untouched.
+const tickConditions = (conds: ActiveCondition[]): ActiveCondition[] =>
+  conds
+    .map((x) => (x.rounds == null ? x : { ...x, rounds: x.rounds - 1 }))
+    .filter((x) => x.rounds == null || x.rounds > 0)
 
 // Has this trigger NOT yet fired for this combatant within its dedupe window?
 const triggerEligible = (t: Trigger, c: Combatant): boolean => {
@@ -82,9 +90,15 @@ type Actions = {
   removeCombatant: (id: string) => void
   applyDamage: (id: string, amount: number) => void
   applyHeal: (id: string, amount: number) => void
+  recordDeathSave: (id: string, kind: 'successes' | 'failures', value: number) => void
   nextTurn: () => void
   previousTurn: () => void
   toggleCondition: (id: string, conditionId: string) => void
+  setCondition: (
+    id: string,
+    conditionId: string,
+    patch: Partial<Pick<ActiveCondition, 'rounds' | 'saveEnds'>>
+  ) => void
   addStrategyLabel: (name: string) => void
   removeStrategyLabel: (name: string) => void
   setStrategyStack: (id: string, name: string, n: number) => void
@@ -175,9 +189,12 @@ export const useStore = create<Store>()(
             type: c.type ?? 'monster',
             maxHP: c.maxHP ?? 10,
             currentHP: c.currentHP ?? c.maxHP ?? 10,
+            tempHP: 0,
             AC: c.AC ?? 10,
             passivePerception: c.passivePerception ?? 10,
             initiative: c.initiative ?? 10,
+            deathSaves: { successes: 0, failures: 0 },
+            concentration: null,
             conditions: [],
             strategyLabels: {},
             notes: '',
@@ -230,7 +247,11 @@ export const useStore = create<Store>()(
         if (!c) return
 
         const prevHP = c.currentHP
-        const newHP = Math.max(0, prevHP - amount)
+        // Temp HP absorbs first; only the overflow reduces real HP. Massive-
+        // damage % still uses the full hit (a big hit is a big hit).
+        const absorbedByTemp = Math.min(c.tempHP, amount)
+        const newTempHP = c.tempHP - absorbedByTemp
+        const newHP = Math.max(0, prevHP - (amount - absorbedByTemp))
         const pct = (amount / Math.max(1, c.maxHP)) * 100
 
         const newResults: TriggerResult[] = []
@@ -279,12 +300,42 @@ export const useStore = create<Store>()(
           }
         }
 
+        // Concentration: taking damage prompts a save; dropping to 0 loses it
+        // automatically (no save).
+        let concentrationCleared = false
+        if (c.concentration) {
+          const lost = newHP <= 0
+          newResults.push({
+            id: newId(),
+            triggerId: 'concentration',
+            triggerName: 'Concentration',
+            eventKind: 'concentration',
+            combatantId: c.id,
+            combatantName: c.name,
+            damage: amount,
+            tableId: null,
+            tableName: null,
+            dice: null,
+            rollsRequested: 0,
+            rolls: [],
+            notifyText: lost
+              ? `${c.name} drops to 0 HP and loses concentration on ${c.concentration}.`
+              : `${c.name} took ${amount} damage while concentrating on ${c.concentration} — Constitution save DC ${Math.max(
+                  10,
+                  Math.floor(amount / 2)
+                )} or lose it.`,
+          })
+          concentrationCleared = lost
+        }
+
         set({
           combatants: s.combatants.map((x) =>
             x.id === id
               ? {
                   ...x,
                   currentHP: newHP,
+                  tempHP: newTempHP,
+                  concentration: concentrationCleared ? null : x.concentration,
                   firedTriggers: firedTurn.length
                     ? [...x.firedTriggers, ...firedTurn]
                     : x.firedTriggers,
@@ -303,17 +354,30 @@ export const useStore = create<Store>()(
       applyHeal: (id, amount) => {
         if (amount <= 0) return
         set((s) => ({
-          combatants: s.combatants.map((c) =>
-            c.id === id
-              ? {
-                  ...c,
-                  currentHP: Math.min(c.maxHP, c.currentHP + amount),
-                  isDead: c.currentHP + amount > 0 ? false : c.isDead,
-                }
-              : c
-          ),
+          combatants: s.combatants.map((c) => {
+            if (c.id !== id) return c
+            const currentHP = Math.min(c.maxHP, c.currentHP + amount)
+            const revived = currentHP > 0
+            return {
+              ...c,
+              currentHP,
+              isDead: revived ? false : c.isDead,
+              // Healing above 0 clears death saves.
+              deathSaves: revived ? { successes: 0, failures: 0 } : c.deathSaves,
+            }
+          }),
         }))
       },
+
+      // Set a death-save count (0–3). Three failures marks the PC dead.
+      recordDeathSave: (id, kind, value) =>
+        set((s) => ({
+          combatants: s.combatants.map((c) => {
+            if (c.id !== id) return c
+            const deathSaves = { ...c.deathSaves, [kind]: Math.max(0, Math.min(3, value)) }
+            return { ...c, deathSaves, isDead: deathSaves.failures >= 3 ? true : c.isDead }
+          }),
+        })),
 
       nextTurn: () =>
         set((s) => {
@@ -321,17 +385,20 @@ export const useStore = create<Store>()(
           const next = (s.currentTurnIndex + 1) % s.combatants.length
           const round = next === 0 ? s.round + 1 : s.round
           const roundChanged = round !== s.round
+          const startingId = s.combatants[next]?.id
           return {
             currentTurnIndex: next,
             round,
             timerRemaining: s.timerSeconds,
             timerRunning: false,
             // perTurn triggers clear on any turn change; perRound only when the
-            // round number changes.
+            // round number changes. Timed conditions tick down for the combatant
+            // whose turn is starting.
             combatants: s.combatants.map((c) => ({
               ...c,
               firedTriggers: [],
               firedTriggersRound: roundChanged ? [] : c.firedTriggersRound,
+              conditions: c.id === startingId ? tickConditions(c.conditions) : c.conditions,
             })),
           }
         }),
@@ -364,9 +431,23 @@ export const useStore = create<Store>()(
             c.id === id
               ? {
                   ...c,
-                  conditions: c.conditions.includes(conditionId)
-                    ? c.conditions.filter((x) => x !== conditionId)
-                    : [...c.conditions, conditionId],
+                  conditions: c.conditions.some((x) => x.id === conditionId)
+                    ? c.conditions.filter((x) => x.id !== conditionId)
+                    : [...c.conditions, { id: conditionId, rounds: null, saveEnds: false }],
+                }
+              : c
+          ),
+        })),
+
+      setCondition: (id, conditionId, patch) =>
+        set((s) => ({
+          combatants: s.combatants.map((c) =>
+            c.id === id
+              ? {
+                  ...c,
+                  conditions: c.conditions.map((x) =>
+                    x.id === conditionId ? { ...x, ...patch } : x
+                  ),
                 }
               : c
           ),
@@ -419,16 +500,19 @@ export const useStore = create<Store>()(
             const next = (s.currentTurnIndex + 1) % s.combatants.length
             const round = next === 0 ? s.round + 1 : s.round
             const roundChanged = round !== s.round
+            const startingId = s.combatants[next]?.id
             return {
               currentTurnIndex: next,
               round,
               timerRemaining: s.timerSeconds,
               timerRunning: false,
-              // perTurn triggers reset on turn change; perRound on round change.
+              // perTurn triggers reset on turn change; perRound on round change;
+              // timed conditions tick for the combatant whose turn starts.
               combatants: s.combatants.map((c) => ({
                 ...c,
                 firedTriggers: [],
                 firedTriggersRound: roundChanged ? [] : c.firedTriggersRound,
+                conditions: c.id === startingId ? tickConditions(c.conditions) : c.conditions,
               })),
             }
           }
@@ -638,7 +722,7 @@ export const useStore = create<Store>()(
     }),
     {
       name: 'the-breaking-encounter',
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
       // Persist only the durable fields. Keep this list and SYNC_KEYS (below)
       // in step when adding state — see CLAUDE.md.

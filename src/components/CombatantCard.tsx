@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store'
-import type { Combatant, PlayerClassId } from '../types'
+import type { ActiveCondition, Combatant, DeathSaves, PlayerClassId } from '../types'
 import { CONDITIONS } from '../data/conditions'
 import { hpStatus, hpStatusColor } from '../utils/hpStatus'
 import { PLAYER_CLASSES, classLabel } from '../data/playerClasses'
@@ -24,6 +24,8 @@ export default function CombatantCard({
   const damage = useStore((s) => s.applyDamage)
   const heal = useStore((s) => s.applyHeal)
   const toggleCondition = useStore((s) => s.toggleCondition)
+  const setCondition = useStore((s) => s.setCondition)
+  const recordDeathSave = useStore((s) => s.recordDeathSave)
   const labelNames = useStore((s) => s.strategyLabelNames)
   const setStrategyStack = useStore((s) => s.setStrategyStack)
   const statblocks = useStore((s) => s.statblocks)
@@ -158,6 +160,14 @@ export default function CombatantCard({
                 📜 statblock
               </button>
             )}
+            {c.concentration && (
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded bg-sky-900 text-sky-200"
+                title={`Concentrating on ${c.concentration}`}
+              >
+                🧠 {c.concentration}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 mt-1">
             <div className="flex-1 h-2 bg-slate-800 rounded overflow-hidden min-w-[4rem]">
@@ -176,6 +186,12 @@ export default function CombatantCard({
             </div>
             <span className="text-xs sm:text-sm font-mono whitespace-nowrap text-slate-200">
               {c.currentHP}/{c.maxHP}
+              {c.tempHP > 0 && (
+                <span className="text-sky-400" title={`${c.tempHP} temporary HP`}>
+                  {' '}
+                  +{c.tempHP}
+                </span>
+              )}
             </span>
             <span className="text-[11px] text-slate-500 whitespace-nowrap">AC {c.AC}</span>
             <span className="hidden sm:inline text-[11px] text-slate-500 whitespace-nowrap">
@@ -185,16 +201,19 @@ export default function CombatantCard({
           {(c.conditions.length > 0 ||
             labelNames.some((n) => c.strategyLabels[n])) && (
             <div className="flex gap-1 flex-wrap mt-1.5">
-              {c.conditions.map((cid) => {
-                const def = CONDITIONS.find((x) => x.id === cid)
+              {c.conditions.map((ac) => {
+                const def = CONDITIONS.find((x) => x.id === ac.id)
                 if (!def) return null
                 return (
                   <span
-                    key={cid}
-                    title={`${def.name} — ${def.description}`}
+                    key={ac.id}
+                    title={`${def.name} — ${def.description}${
+                      ac.saveEnds ? ' (save ends)' : ''
+                    }`}
                     className="text-[10px] px-1.5 py-0.5 rounded bg-purple-900/60 text-purple-200"
                   >
                     <span aria-hidden>{def.icon}</span> {def.name}
+                    {ac.rounds != null && <span className="text-purple-300"> ⏳{ac.rounds}</span>}
                   </span>
                 )
               })}
@@ -318,6 +337,67 @@ export default function CombatantCard({
             </span>
           </div>
 
+          {/* Combat state: temp HP + concentration */}
+          <div className="flex items-center gap-3 flex-wrap text-sm">
+            <label className="flex items-center gap-1.5">
+              <span className="text-[10px] uppercase tracking-wide text-slate-400">
+                Temp HP
+              </span>
+              <input
+                type="number"
+                min={0}
+                value={c.tempHP || ''}
+                placeholder="0"
+                onChange={(e) =>
+                  update(c.id, { tempHP: Math.max(0, parseInt(e.target.value, 10) || 0) })
+                }
+                className="input w-16"
+                title="Temporary hit points — absorbed before real HP"
+              />
+            </label>
+            <label className="flex items-center gap-1.5 flex-1 min-w-[12rem]">
+              <span className="text-[10px] uppercase tracking-wide text-slate-400 whitespace-nowrap">
+                🧠 Concentrating
+              </span>
+              <input
+                value={c.concentration ?? ''}
+                placeholder="—"
+                onChange={(e) =>
+                  update(c.id, {
+                    concentration: e.target.value.trim() ? e.target.value : null,
+                  })
+                }
+                className="input flex-1"
+                title="Name the spell/effect; taking damage prompts a Constitution save"
+              />
+              {c.concentration && (
+                <button
+                  onClick={() => update(c.id, { concentration: null })}
+                  className="btn text-xs"
+                  title="Clear concentration"
+                >
+                  ×
+                </button>
+              )}
+            </label>
+          </div>
+
+          {/* Death saves — PCs at 0 HP */}
+          {c.type === 'pc' && c.currentHP <= 0 && !c.isDead && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] uppercase tracking-wide text-slate-400">
+                Death saves
+              </span>
+              <DeathSavePips
+                deathSaves={c.deathSaves}
+                onSet={(kind, value) => recordDeathSave(c.id, kind, value)}
+              />
+              {c.deathSaves.successes >= 3 && (
+                <span className="text-xs font-semibold text-emerald-400">Stable</span>
+              )}
+            </div>
+          )}
+
           {c.type === 'pc' && (
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-[10px] uppercase tracking-wide text-slate-400">
@@ -400,20 +480,30 @@ export default function CombatantCard({
               Conditions
             </div>
             <div className="flex flex-wrap gap-1 items-center">
-              {c.conditions.map((cid) => {
-                const def = CONDITIONS.find((x) => x.id === cid)
+              {c.conditions.map((ac) => {
+                const def = CONDITIONS.find((x) => x.id === ac.id)
                 if (!def) return null
                 return (
                   <span
-                    key={cid}
+                    key={ac.id}
                     title={`${def.name} — ${def.description}`}
                     className="inline-flex items-center gap-1 text-xs pl-2 pr-1 py-1 rounded bg-purple-700 text-white"
                   >
                     <span aria-hidden>{def.icon}</span>
                     {def.name}
+                    {ac.rounds != null && (
+                      <span className="text-purple-200" title={`${ac.rounds} rounds left`}>
+                        ⏳{ac.rounds}
+                      </span>
+                    )}
+                    {ac.saveEnds && (
+                      <span className="text-[9px] text-purple-200" title="Save ends">
+                        SE
+                      </span>
+                    )}
                     <button
-                      onClick={() => toggleCondition(c.id, cid)}
-                      className="ml-0.5 w-4 h-4 rounded-full hover:bg-black/25 flex items-center justify-center leading-none"
+                      onClick={() => toggleCondition(c.id, ac.id)}
+                      className="ml-0.5 w-6 h-6 sm:w-4 sm:h-4 rounded-full hover:bg-black/25 flex items-center justify-center leading-none text-base sm:text-xs"
                       title={`Remove ${def.name}`}
                       aria-label={`Remove ${def.name}`}
                     >
@@ -559,7 +649,48 @@ export default function CombatantCard({
         name={c.name}
         active={c.conditions}
         onToggle={(id) => toggleCondition(c.id, id)}
+        onSetDuration={(condId, patch) => setCondition(c.id, condId, patch)}
       />
+    </div>
+  )
+}
+
+// Three success + three failure pips. Clicking pip N sets the count to N, or
+// back to N−1 if it's already there. Read-only when onSet is omitted.
+export function DeathSavePips({
+  deathSaves,
+  onSet,
+}: {
+  deathSaves: DeathSaves
+  onSet?: (kind: 'successes' | 'failures', value: number) => void
+}) {
+  const group = (kind: 'successes' | 'failures', on: string, off: string) => (
+    <div className="flex gap-1">
+      {[1, 2, 3].map((i) => {
+        const filled = deathSaves[kind] >= i
+        // Interactive pips (DM card) grow on touch; read-only pips stay compact.
+        const size = onSet ? 'w-6 h-6 sm:w-5 sm:h-5' : 'w-4 h-4'
+        const cls = `${size} rounded-full border ${filled ? on : off}`
+        const label = `${kind === 'successes' ? 'Success' : 'Failure'} ${i}`
+        return onSet ? (
+          <button
+            key={i}
+            onClick={() => onSet(kind, deathSaves[kind] === i ? i - 1 : i)}
+            className={cls}
+            title={label}
+            aria-label={label}
+          />
+        ) : (
+          <span key={i} className={cls} title={label} aria-hidden />
+        )
+      })}
+    </div>
+  )
+  return (
+    <div className="flex items-center gap-2">
+      {group('successes', 'bg-emerald-500 border-emerald-400', 'bg-transparent border-emerald-700')}
+      <span className="text-slate-600 text-xs">/</span>
+      {group('failures', 'bg-red-500 border-red-400', 'bg-transparent border-red-800')}
     </div>
   )
 }
@@ -572,12 +703,17 @@ function ConditionsModal({
   name,
   active,
   onToggle,
+  onSetDuration,
 }: {
   open: boolean
   onClose: () => void
   name: string
-  active: string[]
+  active: ActiveCondition[]
   onToggle: (id: string) => void
+  onSetDuration: (
+    conditionId: string,
+    patch: Partial<Pick<ActiveCondition, 'rounds' | 'saveEnds'>>
+  ) => void
 }) {
   useEffect(() => {
     if (!open) return
@@ -608,34 +744,81 @@ function ConditionsModal({
           </button>
         </header>
 
-        <div className="p-3 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-          {CONDITIONS.map((cond) => {
-            const on = active.includes(cond.id)
-            return (
-              <button
-                key={cond.id}
-                onClick={() => onToggle(cond.id)}
-                title={cond.description}
-                aria-pressed={on}
-                className={`flex items-center gap-2 px-3 py-2 rounded text-left text-sm transition ${
-                  on
-                    ? 'bg-purple-700 text-white'
-                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                }`}
-              >
-                <span aria-hidden className="text-lg leading-none w-6 text-center">
-                  {cond.icon}
-                </span>
-                <span className="flex-1 leading-tight">{cond.name}</span>
-                {on && <span className="text-xs">✓</span>}
-              </button>
-            )
-          })}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            {CONDITIONS.map((cond) => {
+              const on = active.some((a) => a.id === cond.id)
+              return (
+                <button
+                  key={cond.id}
+                  onClick={() => onToggle(cond.id)}
+                  title={cond.description}
+                  aria-pressed={on}
+                  className={`flex items-center gap-2 px-3 py-2 rounded text-left text-sm transition ${
+                    on
+                      ? 'bg-purple-700 text-white'
+                      : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                  }`}
+                >
+                  <span aria-hidden className="text-lg leading-none w-6 text-center">
+                    {cond.icon}
+                  </span>
+                  <span className="flex-1 leading-tight">{cond.name}</span>
+                  {on && <span className="text-xs">✓</span>}
+                </button>
+              )
+            })}
+          </div>
+
+          {active.length > 0 && (
+            <div className="px-3 pb-3 pt-2 border-t border-slate-800">
+              <div className="text-[10px] uppercase tracking-wide text-slate-400 mb-1.5">
+                Durations
+              </div>
+              <div className="space-y-1.5">
+                {active.map((ac) => {
+                  const def = CONDITIONS.find((x) => x.id === ac.id)
+                  if (!def) return null
+                  return (
+                    <div key={ac.id} className="flex items-center gap-2 text-sm">
+                      <span aria-hidden className="w-5 text-center">
+                        {def.icon}
+                      </span>
+                      <span className="flex-1 truncate">{def.name}</span>
+                      <label className="flex items-center gap-1 text-xs text-slate-400">
+                        <input
+                          type="number"
+                          min={1}
+                          value={ac.rounds ?? ''}
+                          placeholder="∞"
+                          onChange={(e) => {
+                            const n = parseInt(e.target.value, 10)
+                            onSetDuration(ac.id, { rounds: !isNaN(n) && n > 0 ? n : null })
+                          }}
+                          className="input w-16"
+                          title="Rounds remaining — ticks down on this combatant's turn. Blank = no timer."
+                        />
+                        rounds
+                      </label>
+                      <label className="flex items-center gap-1 text-xs text-slate-400">
+                        <input
+                          type="checkbox"
+                          checked={ac.saveEnds}
+                          onChange={(e) => onSetDuration(ac.id, { saveEnds: e.target.checked })}
+                        />
+                        save ends
+                      </label>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="px-4 py-2 border-t border-slate-800 text-xs text-slate-500">
-          Tap conditions to add or remove — pick as many as you need. Hover a
-          condition for its rules. Press Esc or Done when finished.
+          Tap a condition to add or remove it. Set a rounds timer (ticks down on
+          the combatant's turn) or mark "save ends" below. Esc or Done when finished.
         </div>
       </div>
     </div>

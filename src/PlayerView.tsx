@@ -6,6 +6,7 @@ import Hourglass from './components/Hourglass'
 import PlayerInjuryBanner from './components/PlayerInjuryBanner'
 import CombatantIcon from './components/CombatantIcon'
 import ThemeToggle from './components/ThemeToggle'
+import { DeathSavePips } from './components/CombatantCard'
 import { classLabel } from './data/playerClasses'
 
 export default function PlayerView() {
@@ -128,17 +129,26 @@ export default function PlayerView() {
                       >
                         {status}
                       </span>
+                      {c.concentration && (
+                        <span className="text-sm px-2 py-0.5 rounded bg-sky-900 text-sky-100">
+                          🧠 Concentrating
+                        </span>
+                      )}
+                      {c.type === 'pc' && c.currentHP <= 0 && !c.isDead && (
+                        <DeathSavePips deathSaves={c.deathSaves} />
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {c.conditions.map((cid) => {
-                        const def = CONDITIONS.find((x) => x.id === cid)
+                      {c.conditions.map((ac) => {
+                        const def = CONDITIONS.find((x) => x.id === ac.id)
                         return def ? (
                           <span
-                            key={cid}
+                            key={ac.id}
                             title={def.description}
                             className="text-xs px-2 py-1 rounded bg-purple-900 text-purple-100"
                           >
                             <span aria-hidden>{def.icon}</span> {def.name}
+                            {ac.rounds != null && ` (${ac.rounds})`}
                           </span>
                         ) : null
                       })}

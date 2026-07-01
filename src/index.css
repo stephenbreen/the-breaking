@@ -144,6 +144,25 @@ body {
   }
 }
 
+/*
+  Touch targets — on coarse pointers (phones/tablets) grow the shared controls
+  to the ~44px tap guideline. Desktop (fine pointer) keeps its denser sizing.
+  iOS also zooms any focused input whose font is <16px, so bump input text too.
+*/
+@media (pointer: coarse) {
+  .btn,
+  .btn-primary,
+  .btn-danger {
+    min-height: 2.75rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+  .input {
+    min-height: 2.75rem;
+    font-size: 16px;
+  }
+}
+
 @keyframes injury-enter {
   0% {
     opacity: 0;

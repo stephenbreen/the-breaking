@@ -17,6 +17,8 @@ function headline(r: TriggerResult): { title: string; detail: string } {
       return { title: 'Down!', detail: `${name} dropped to 0 HP.` }
     case 'combatantAdded':
       return { title: r.triggerName, detail: `${name} joined the encounter.` }
+    case 'concentration':
+      return { title: '🧠 Concentration', detail: '' }
   }
 }
 
