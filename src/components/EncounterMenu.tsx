@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useStore } from '../store'
 import { migratePersisted } from '../data/migrate'
+import { parseParty, serializeParty, toParty } from '../data/party'
 import type { EncounterState } from '../types'
 
 export default function EncounterMenu({
@@ -12,8 +13,22 @@ export default function EncounterMenu({
   const replace = useStore((s) => s.replaceState)
   const reset = useStore((s) => s.resetEncounter)
   const clearFired = useStore((s) => s.clearFiredTriggers)
+  const addCombatants = useStore((s) => s.addCombatants)
   const [open, setOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const partyFileRef = useRef<HTMLInputElement>(null)
+
+  const download = (text: string, filename: string) => {
+    const blob = new Blob([text], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const today = () => new Date().toISOString().slice(0, 10)
 
   const exportJson = () => {
     const {
@@ -34,16 +49,47 @@ export default function EncounterMenu({
       tables,
       timerSeconds,
     }
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: 'application/json',
-    })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `the-breaking-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    download(JSON.stringify(payload, null, 2), `the-breaking-${today()}.json`)
     setOpen(false)
+  }
+
+  const exportParty = () => {
+    const members = toParty(state.combatants)
+    if (members.length === 0) {
+      alert('No players to export. Add PCs first (set type to "PC" when adding).')
+      return
+    }
+    download(serializeParty(members), `the-breaking-party-${today()}.json`)
+    setOpen(false)
+  }
+
+  const importParty = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      const members = parseParty(JSON.parse(await file.text()))
+      if (members.length === 0) {
+        alert('No players found in that file.')
+        return
+      }
+      const names = members
+        .map((m) => m.name)
+        .slice(0, 4)
+        .join(', ')
+      const more = members.length > 4 ? `, +${members.length - 4} more` : ''
+      if (
+        !confirm(
+          `Add ${members.length} player${members.length > 1 ? 's' : ''} to the ` +
+            `current encounter?\n\n${names}${more}`
+        )
+      )
+        return
+      addCombatants(members)
+      setOpen(false)
+    } catch (err) {
+      alert('Import failed: ' + (err as Error).message)
+    }
   }
 
   const importJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,6 +186,24 @@ export default function EncounterMenu({
             >
               Import encounter JSON…
             </button>
+            <div className="border-t border-slate-700 my-1" />
+            <div className="px-3 pt-1 pb-0.5 text-[10px] uppercase tracking-wide text-slate-500">
+              Party
+            </div>
+            <button
+              onClick={exportParty}
+              className="w-full text-left px-3 py-2 hover:bg-slate-800 text-sm"
+              title="Save the current PCs to a file to reuse next session"
+            >
+              Export party (PCs)…
+            </button>
+            <button
+              onClick={() => partyFileRef.current?.click()}
+              className="w-full text-left px-3 py-2 hover:bg-slate-800 text-sm"
+              title="Add a saved party of PCs to this encounter"
+            >
+              Import party…
+            </button>
           </div>
         </>
       )}
@@ -149,6 +213,13 @@ export default function EncounterMenu({
         accept=".json,application/json"
         hidden
         onChange={importJson}
+      />
+      <input
+        ref={partyFileRef}
+        type="file"
+        accept=".json,application/json"
+        hidden
+        onChange={importParty}
       />
     </div>
   )

@@ -86,6 +86,7 @@ function buildResult(
 
 type Actions = {
   addCombatant: (c: Partial<Combatant>) => void
+  addCombatants: (list: Partial<Combatant>[]) => void
   updateCombatant: (id: string, patch: Partial<Combatant>) => void
   removeCombatant: (id: string) => void
   applyDamage: (id: string, amount: number) => void
@@ -176,6 +177,34 @@ function pick<K extends keyof EncounterState>(
 const sortByInit = (combatants: Combatant[]) =>
   [...combatants].sort((a, b) => b.initiative - a.initiative)
 
+// Build a full Combatant from a partial, filling every field with a sane
+// default and a fresh id. Shared by addCombatant and the bulk addCombatants
+// (party import) so imported combatants always match the current shape.
+function buildCombatant(c: Partial<Combatant>): Combatant {
+  return {
+    id: newId(),
+    name: c.name ?? 'Unnamed',
+    type: c.type ?? 'monster',
+    maxHP: c.maxHP ?? 10,
+    currentHP: c.currentHP ?? c.maxHP ?? 10,
+    tempHP: 0,
+    AC: c.AC ?? 10,
+    passivePerception: c.passivePerception ?? 10,
+    initiative: c.initiative ?? 10,
+    deathSaves: { successes: 0, failures: 0 },
+    concentration: null,
+    conditions: [],
+    strategyLabels: {},
+    notes: c.notes ?? '',
+    nameVisibleToPlayers: c.nameVisibleToPlayers ?? c.type === 'pc',
+    isDead: false,
+    firedTriggers: [],
+    firedTriggersRound: [],
+    playerClass: c.playerClass,
+    statblockId: c.statblockId,
+  }
+}
+
 export const useStore = create<Store>()(
   persist(
     (set, get) => ({
@@ -183,26 +212,7 @@ export const useStore = create<Store>()(
 
       addCombatant: (c) =>
         set((s) => {
-          const newCombatant: Combatant = {
-            id: newId(),
-            name: c.name ?? 'Unnamed',
-            type: c.type ?? 'monster',
-            maxHP: c.maxHP ?? 10,
-            currentHP: c.currentHP ?? c.maxHP ?? 10,
-            tempHP: 0,
-            AC: c.AC ?? 10,
-            passivePerception: c.passivePerception ?? 10,
-            initiative: c.initiative ?? 10,
-            deathSaves: { successes: 0, failures: 0 },
-            concentration: null,
-            conditions: [],
-            strategyLabels: {},
-            notes: '',
-            nameVisibleToPlayers: c.nameVisibleToPlayers ?? (c.type === 'pc'),
-            isDead: false,
-            firedTriggers: [],
-            firedTriggersRound: [],
-          }
+          const newCombatant = buildCombatant(c)
           // Fire any "when a combatant is added" triggers (e.g. roll on a
           // random-encounter / reinforcements table).
           const results: TriggerResult[] = []
@@ -222,6 +232,14 @@ export const useStore = create<Store>()(
               : s.triggerResults,
           }
         }),
+
+      // Append several combatants at once (e.g. importing a saved party).
+      // Deliberately does NOT fire `combatantAdded` triggers — a bulk party
+      // import shouldn't roll a reinforcements table once per player.
+      addCombatants: (list) =>
+        set((s) => ({
+          combatants: sortByInit([...s.combatants, ...list.map(buildCombatant)]),
+        })),
 
       updateCombatant: (id, patch) =>
         set((s) => ({
