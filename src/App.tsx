@@ -11,6 +11,7 @@ import AddCombatantModal from './components/AddCombatantModal'
 import HelpModal from './components/HelpModal'
 import LibraryModal from './components/LibraryModal'
 import ThemeToggle from './components/ThemeToggle'
+import KofiWidget from './components/KofiWidget'
 
 type Tab = 'initiative' | 'dice' | 'tables' | 'settings'
 
@@ -338,6 +339,7 @@ export default function App() {
         }}
       />
       <InjuryToast />
+      <KofiWidget />
     </div>
   )
 }
