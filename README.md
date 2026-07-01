@@ -37,25 +37,57 @@ via `BroadcastChannel` in the same browser.
 - HP bar and a status word (`Healthy`, `Hurt`, `Bloodied`, `Dire`, `Dying`,
   `Dead`). Players see only the status word, never numeric HP.
 
-### Massive-damage triggers (injury tables)
-- A single hit dealing ≥ *threshold* % of max HP fires an injury-table prompt
-  to the DM.
-- Default thresholds are **25 %** and **50 %**, configurable in the Settings
-  tab. If both apply to one hit, only the higher fires.
-- Each threshold fires at most once per combatant per encounter.
-  ("Reset triggers" from the Encounter menu clears them — e.g. after a long
-  rest in-fiction.)
-- The toast points the DM at the matching table. Players physically roll their
-  injury die; a `Roll` button also exists for the DM to preview the result.
+### Triggers (rules that roll tables)
+- A **trigger** is a DM-authored rule — *"when EVENT happens → roll a table"* —
+  managed in the Settings tab. Each trigger has an event, a scope (all / PCs /
+  monsters), and an action (roll a table N times, or show a note).
+- **Events:** a single hit dealing ≥ *X* % of max HP, a combatant dropping to
+  **0 HP**, or a new **combatant being added** (e.g. roll a reinforcements
+  table).
+- **The injury rule, written clearly:** the 25 % / 50 % distinction is *not*
+  two tables. It is **one injury table** with two triggers — ≥ 25 % rolls it
+  **once**, ≥ 50 % rolls the **same table twice**. When several massive-damage
+  triggers match one hit, only the highest fires.
+- **Cadence:** each trigger fires *every time*, *once per turn*, or *once per
+  round* per combatant — the last for an effect that should only happen once
+  this round. Turn/round counters reset automatically on turn/round change
+  ("Reset fired triggers" in Settings / the Encounter menu clears them manually).
+- When a trigger fires, a toast prompts the DM. Players can roll the die
+  physically, or a `Roll` button rolls in-app (twice for a 50 % injury).
+  Injury reveals flash on the player view; combatant-added notes stay DM-only.
 
 ### DM-authored roll tables
-- Injury 25 % and Injury 50 % are seeded with editable starter entries.
-- Add new tables (treasure, complications, wild magic, whatever). Each table
-  has a name, a dice expression, and a list of `range → text` entries.
-- Import / export individual tables as JSON.
+- An **Injury Table** is seeded with editable starter entries.
+- Add new tables (treasure, complications, reinforcements, whatever). Each table
+  has a name, a dice expression, and a list of `range → text` entries; entries
+  reorder with ▲/▼.
+- **Duplicate** any table to spin a variant, and **delete** any table.
+- Import / export individual tables as JSON. Point any trigger at any table.
+
+### Prep library — Scenes, Encounters & Statblocks
+- A **Library** (📚 in the header, or `L`) organises prep as **Scene → Encounter**
+  — e.g. *Wishing Well* → *Goblin Ambush* / *Griffin Attack*. Ships with an
+  example scene so new users can see how it works.
+- Each roster line has a **quantity** that expands on load (Goblin ×4 → Goblin
+  1–4) and an **initiative mode**: roll each, roll as a group (one shared roll),
+  static, or keep it manual for live entry. Rolls are `1d20 + modifier`.
+- **Load ▶** replaces the live fight with the encounter (rolling initiative as
+  configured); **Save current fight here** captures the board back into a scene.
+- **Export / import** whole scenes as JSON (bundling their statblocks).
+- **Statblocks:** import [Fantasy Statblocks](https://plugins.javalent.com/statblocks/readme/code-block)
+  YAML **or** 5etools / 5e.tools bestiary JSON (paste or upload) — a single
+  monster, a JSON array, a bestiary `{ "monster": [ … ] }` file, or YAML
+  multi-docs. 5etools array/object fields and `{@tag}` markup are converted to
+  readable text automatically. Link one to a roster line or combatant; hover the
+  **📜 statblock** chip for a quick line or click / expand for the full 5e-styled
+  block. Statblocks are DM-only and never sync to the player view.
 
 ### Conditions and strategy labels
-- Standard 5e conditions (including Exhaustion 1–6) as toggleable chips.
+- Standard 5e conditions (including Exhaustion 1–6), **each with an icon** for
+  quick recognition. Click **+ Add** under a combatant's Conditions to open a
+  picker of the full list (icon + name) and toggle as many as you like; chosen
+  conditions show as chips with an **×** to clear them, on both the DM and
+  player views.
 - DM-defined stackable **strategy labels** (e.g. `Surrounded 1`, `Surrounded 2`,
   `Surrounded 3`) that are visible on both the DM and player views. Purely
   informational — they do not apply mechanics automatically.
@@ -70,6 +102,15 @@ via `BroadcastChannel` in the same browser.
 - Preset dice buttons (`d4` – `d100` and `2d6`) plus a freeform expression
   field (`2d6+3`, `1d20-1`, `3d4+2d6+1`).
 - Rolling history (last 30) with per-die results and modifier breakdown.
+
+### Light & dark themes
+- A parchment "Player's Handbook" **light** theme and a warm near-black **dark**
+  theme, toggled with the **🌙 Dark / ☀️ Light** button in the header. The choice
+  is remembered per window and the player popout follows the DM's toggle live.
+- On desktop, the **Hide panel / Show panel** header button collapses the right
+  panel (dice / tables / settings) so the initiative list gets the full width.
+- The visual language (tokens, typography, both palettes) is documented in
+  [`DESIGN.md`](DESIGN.md).
 
 ### Encounter persistence
 - State auto-saves to `localStorage` on every change. Refreshing either window

@@ -5,6 +5,8 @@ import { CONDITIONS } from '../data/conditions'
 import { hpStatus, hpStatusColor } from '../utils/hpStatus'
 import { PLAYER_CLASSES, classLabel } from '../data/playerClasses'
 import CombatantIcon from './CombatantIcon'
+import StatblockView from './StatblockView'
+import StatblockModal from './StatblockModal'
 
 export default function CombatantCard({
   c,
@@ -24,6 +26,10 @@ export default function CombatantCard({
   const toggleCondition = useStore((s) => s.toggleCondition)
   const labelNames = useStore((s) => s.strategyLabelNames)
   const setStrategyStack = useStore((s) => s.setStrategyStack)
+  const statblocks = useStore((s) => s.statblocks)
+  const sb = c.statblockId ? statblocks.find((x) => x.id === c.statblockId) : undefined
+  const [sbOpen, setSbOpen] = useState(false)
+  const [condOpen, setCondOpen] = useState(false)
 
   // Row-header quick HP control — keyboard-driven (Enter / Shift+Enter).
   const [quick, setQuick] = useState('')
@@ -138,6 +144,20 @@ export default function CombatantCard({
                 👁‍🗨 hidden
               </span>
             )}
+            {sb && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSbOpen(true)
+                }}
+                className="text-[10px] px-1.5 py-0.5 rounded bg-red-950 text-red-200 hover:bg-red-900"
+                title={`${sb.name}${sb.ac ? ` · AC ${sb.ac}` : ''}${
+                  sb.hp ? ` · HP ${sb.hp}` : ''
+                }${sb.cr ? ` · CR ${sb.cr}` : ''} — click for full statblock`}
+              >
+                📜 statblock
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-2 mt-1">
             <div className="flex-1 h-2 bg-slate-800 rounded overflow-hidden min-w-[4rem]">
@@ -171,10 +191,10 @@ export default function CombatantCard({
                 return (
                   <span
                     key={cid}
-                    title={def.description}
+                    title={`${def.name} — ${def.description}`}
                     className="text-[10px] px-1.5 py-0.5 rounded bg-purple-900/60 text-purple-200"
                   >
-                    {def.name}
+                    <span aria-hidden>{def.icon}</span> {def.name}
                   </span>
                 )
               })}
@@ -379,24 +399,39 @@ export default function CombatantCard({
             <div className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">
               Conditions
             </div>
-            <div className="flex flex-wrap gap-1">
-              {CONDITIONS.map((cond) => {
-                const active = c.conditions.includes(cond.id)
+            <div className="flex flex-wrap gap-1 items-center">
+              {c.conditions.map((cid) => {
+                const def = CONDITIONS.find((x) => x.id === cid)
+                if (!def) return null
                 return (
-                  <button
-                    key={cond.id}
-                    title={cond.description}
-                    onClick={() => toggleCondition(c.id, cond.id)}
-                    className={`text-xs px-2 py-1 rounded transition ${
-                      active
-                        ? 'bg-purple-700 text-white hover:bg-purple-600'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                    }`}
+                  <span
+                    key={cid}
+                    title={`${def.name} — ${def.description}`}
+                    className="inline-flex items-center gap-1 text-xs pl-2 pr-1 py-1 rounded bg-purple-700 text-white"
                   >
-                    {cond.name}
-                  </button>
+                    <span aria-hidden>{def.icon}</span>
+                    {def.name}
+                    <button
+                      onClick={() => toggleCondition(c.id, cid)}
+                      className="ml-0.5 w-4 h-4 rounded-full hover:bg-black/25 flex items-center justify-center leading-none"
+                      title={`Remove ${def.name}`}
+                      aria-label={`Remove ${def.name}`}
+                    >
+                      ×
+                    </button>
+                  </span>
                 )
               })}
+              <button
+                onClick={() => setCondOpen(true)}
+                className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-slate-800 text-slate-200 hover:bg-slate-700"
+                title="Add conditions"
+              >
+                <span className="text-sm leading-none">＋</span> Add
+              </button>
+              {c.conditions.length === 0 && (
+                <span className="text-xs text-slate-500 italic">none</span>
+              )}
             </div>
           </div>
 
@@ -437,6 +472,34 @@ export default function CombatantCard({
                   )
                 })}
               </div>
+            </div>
+          )}
+
+          {(statblocks.length > 0 || sb) && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">
+                Statblock
+              </div>
+              <select
+                value={c.statblockId ?? ''}
+                onChange={(e) =>
+                  update(c.id, { statblockId: e.target.value || undefined })
+                }
+                className="input w-full"
+                title="Link a statblock from your library (DM-only reference)"
+              >
+                <option value="">— none —</option>
+                {statblocks.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              {sb && (
+                <div className="mt-2 rounded-lg border border-[color:rgb(var(--sb-heading)/0.4)] bg-slate-950/40 p-3">
+                  <StatblockView sb={sb} />
+                </div>
+              )}
             </div>
           )}
 
@@ -488,6 +551,93 @@ export default function CombatantCard({
           </div>
         </div>
       )}
+
+      <StatblockModal sb={sbOpen ? sb ?? null : null} onClose={() => setSbOpen(false)} />
+      <ConditionsModal
+        open={condOpen}
+        onClose={() => setCondOpen(false)}
+        name={c.name}
+        active={c.conditions}
+        onToggle={(id) => toggleCondition(c.id, id)}
+      />
+    </div>
+  )
+}
+
+// Modal overlay for adding/removing conditions. Lists every condition with its
+// icon and name; tap to toggle — several can be picked before closing.
+function ConditionsModal({
+  open,
+  onClose,
+  name,
+  active,
+  onToggle,
+}: {
+  open: boolean
+  onClose: () => void
+  name: string
+  active: string[]
+  onToggle: (id: string) => void
+}) {
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  if (!open) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl w-[34rem] max-w-full max-h-[85vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="flex items-center gap-2 px-4 py-3 border-b border-slate-800">
+          <h3 className="font-bold">Conditions</h3>
+          <span className="text-sm text-slate-400 truncate">— {name}</span>
+          <div className="flex-1" />
+          <button onClick={onClose} className="btn-primary text-sm">
+            Done
+          </button>
+        </header>
+
+        <div className="p-3 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+          {CONDITIONS.map((cond) => {
+            const on = active.includes(cond.id)
+            return (
+              <button
+                key={cond.id}
+                onClick={() => onToggle(cond.id)}
+                title={cond.description}
+                aria-pressed={on}
+                className={`flex items-center gap-2 px-3 py-2 rounded text-left text-sm transition ${
+                  on
+                    ? 'bg-purple-700 text-white'
+                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                }`}
+              >
+                <span aria-hidden className="text-lg leading-none w-6 text-center">
+                  {cond.icon}
+                </span>
+                <span className="flex-1 leading-tight">{cond.name}</span>
+                {on && <span className="text-xs">✓</span>}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="px-4 py-2 border-t border-slate-800 text-xs text-slate-500">
+          Tap conditions to add or remove — pick as many as you need. Hover a
+          condition for its rules. Press Esc or Done when finished.
+        </div>
+      </div>
     </div>
   )
 }

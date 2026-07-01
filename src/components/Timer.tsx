@@ -27,10 +27,20 @@ export default function Timer() {
       <span className="text-lg sm:text-2xl font-mono font-bold w-10 sm:w-14 text-center">
         {timerRemaining}s
       </span>
-      <button onClick={() => setRunning(!timerRunning)} className="btn">
+      <button
+        onClick={() => setRunning(!timerRunning)}
+        className="btn text-base leading-none px-2.5"
+        title={timerRunning ? 'Pause timer (T)' : 'Start timer (T)'}
+        aria-label={timerRunning ? 'Pause timer' : 'Start timer'}
+      >
         {timerRunning ? '⏸' : '▶'}
       </button>
-      <button onClick={reset} className="btn" title="Reset timer">
+      <button
+        onClick={reset}
+        className="btn text-base leading-none px-2.5"
+        title="Reset timer to full (R)"
+        aria-label="Reset timer"
+      >
         ↺
       </button>
       <input

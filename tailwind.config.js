@@ -4,33 +4,33 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
-      // PHB palette mapped onto the existing slate/indigo class names so the
-      // app's color tokens flip to a parchment + burgundy theme without
-      // touching every component. Low slate numbers (text) are inked browns;
-      // high slate numbers (backgrounds) are parchment.
+      // The PHB parchment/burgundy palette is mapped onto the slate/indigo class
+      // names via CSS variables (defined in index.css). Toggling `.dark` on
+      // <html> flips every token light↔dark without touching components.
+      // Low slate numbers = text/ink, high = surfaces. See DESIGN.md.
       colors: {
         slate: {
-          50:  '#fdf6e3',
-          100: '#2a1810', // primary ink — body/heading text
-          200: '#3e2c20',
-          300: '#4a3520',
-          400: '#6b5239',
-          500: '#8b7355', // most-muted text
-          600: '#a08560',
-          700: '#6b5239', // leather — neutral button bg, input border
-          800: '#c9a665', // mid parchment — chips, inputs, dividers
-          900: '#e8d5a7', // parchment — cards, panels
-          950: '#f0e0b8', // page parchment
+          50:  'rgb(var(--slate-50) / <alpha-value>)',
+          100: 'rgb(var(--slate-100) / <alpha-value>)',
+          200: 'rgb(var(--slate-200) / <alpha-value>)',
+          300: 'rgb(var(--slate-300) / <alpha-value>)',
+          400: 'rgb(var(--slate-400) / <alpha-value>)',
+          500: 'rgb(var(--slate-500) / <alpha-value>)',
+          600: 'rgb(var(--slate-600) / <alpha-value>)',
+          700: 'rgb(var(--slate-700) / <alpha-value>)',
+          800: 'rgb(var(--slate-800) / <alpha-value>)',
+          900: 'rgb(var(--slate-900) / <alpha-value>)',
+          950: 'rgb(var(--slate-950) / <alpha-value>)',
         },
         indigo: {
-          300: '#a02828', // active-turn text — burgundy
-          400: '#b8860b', // active-card border — gold
-          500: '#a02828',
-          600: '#7c1d1d', // primary action — PHB burgundy
-          700: '#5c1414',
-          800: '#5c1414',
-          900: '#e6c270', // active accent block — illuminated gold
-          950: '#fbe9b4', // active translucent bg — soft gold
+          300: 'rgb(var(--indigo-300) / <alpha-value>)',
+          400: 'rgb(var(--indigo-400) / <alpha-value>)',
+          500: 'rgb(var(--indigo-500) / <alpha-value>)',
+          600: 'rgb(var(--indigo-600) / <alpha-value>)',
+          700: 'rgb(var(--indigo-700) / <alpha-value>)',
+          800: 'rgb(var(--indigo-800) / <alpha-value>)',
+          900: 'rgb(var(--indigo-900) / <alpha-value>)',
+          950: 'rgb(var(--indigo-950) / <alpha-value>)',
         },
       },
       fontFamily: {

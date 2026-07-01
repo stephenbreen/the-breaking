@@ -7,6 +7,7 @@ import type { RollTable, TableEntry } from '../types'
 export default function TablesPanel() {
   const tables = useStore((s) => s.tables)
   const addTable = useStore((s) => s.addTable)
+  const duplicateTable = useStore((s) => s.duplicateTable)
   const removeTable = useStore((s) => s.removeTable)
   const [selectedId, setSelectedId] = useState<string | null>(tables[0]?.id ?? null)
 
@@ -71,21 +72,17 @@ export default function TablesPanel() {
               title={t.name}
             >
               {t.name}
-              {t.builtIn && (
-                <span className="ml-1 text-[9px] text-indigo-400">★</span>
-              )}
             </button>
           ))}
         </div>
         <div className="flex sm:block gap-1 p-2 sm:space-y-1 border-l sm:border-l-0 sm:border-t border-slate-800 shrink-0">
           <button
             onClick={() => {
-              const name = prompt('New table name:')
-              if (name?.trim()) {
-                addTable({ name: name.trim(), dice: 'd20', entries: [] })
-              }
+              const id = addTable({ name: 'New Table', dice: 'd20', entries: [] })
+              setSelectedId(id)
             }}
             className="btn sm:w-full text-xs whitespace-nowrap"
+            title="Create a blank table and edit it inline"
           >
             + New
           </button>
@@ -98,6 +95,10 @@ export default function TablesPanel() {
         {selected ? (
           <TableEditor
             table={selected}
+            onDuplicate={() => {
+              const id = duplicateTable(selected.id)
+              if (id) setSelectedId(id)
+            }}
             onDelete={() => removeTable(selected.id)}
           />
         ) : (
@@ -110,9 +111,23 @@ export default function TablesPanel() {
   )
 }
 
-function TableEditor({ table, onDelete }: { table: RollTable; onDelete: () => void }) {
+function TableEditor({
+  table,
+  onDuplicate,
+  onDelete,
+}: {
+  table: RollTable
+  onDuplicate: () => void
+  onDelete: () => void
+}) {
   const update = useStore((s) => s.updateTable)
+  const triggers = useStore((s) => s.triggers)
   const [lastRoll, setLastRoll] = useState<{ roll: number; entry: TableEntry | null } | null>(null)
+
+  // Triggers that fire this table — surfaced before a destructive delete.
+  const referencingTriggers = triggers.filter(
+    (t) => t.action.kind === 'rollTable' && t.action.tableId === table.id
+  )
 
   const roll = () => {
     const r = rollExpression(table.dice)
@@ -138,6 +153,14 @@ function TableEditor({ table, onDelete }: { table: RollTable; onDelete: () => vo
 
   const removeEntry = (id: string) => {
     update(table.id, { entries: table.entries.filter((e) => e.id !== id) })
+  }
+
+  const moveEntry = (index: number, dir: -1 | 1) => {
+    const target = index + dir
+    if (target < 0 || target >= table.entries.length) return
+    const entries = [...table.entries]
+    ;[entries[index], entries[target]] = [entries[target], entries[index]]
+    update(table.id, { entries })
   }
 
   const exportJson = () => {
@@ -188,8 +211,26 @@ function TableEditor({ table, onDelete }: { table: RollTable; onDelete: () => vo
         </div>
       )}
       <div className="space-y-1">
-        {table.entries.map((e) => (
+        {table.entries.map((e, i) => (
           <div key={e.id} className="flex gap-2 items-start">
+            <div className="flex flex-col -my-0.5 shrink-0">
+              <button
+                onClick={() => moveEntry(i, -1)}
+                disabled={i === 0}
+                className="text-slate-500 hover:text-slate-200 disabled:opacity-20 disabled:cursor-not-allowed leading-none text-xs"
+                title="Move up"
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => moveEntry(i, 1)}
+                disabled={i === table.entries.length - 1}
+                className="text-slate-500 hover:text-slate-200 disabled:opacity-20 disabled:cursor-not-allowed leading-none text-xs"
+                title="Move down"
+              >
+                ▼
+              </button>
+            </div>
             <input
               value={e.range}
               placeholder="1-5"
@@ -211,25 +252,37 @@ function TableEditor({ table, onDelete }: { table: RollTable; onDelete: () => vo
             </button>
           </div>
         ))}
+        {table.entries.length === 0 && (
+          <div className="text-xs text-slate-500 italic py-2">
+            No entries yet. Add rows, then set each range (e.g. <span className="font-mono">1-5</span>).
+          </div>
+        )}
       </div>
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap items-center">
         <button onClick={addEntry} className="btn">
           + Entry
         </button>
         <button onClick={exportJson} className="btn">
           Export JSON
         </button>
+        <button onClick={onDuplicate} className="btn" title="Create an editable copy of this table">
+          Duplicate
+        </button>
         <div className="flex-1" />
-        {!table.builtIn && (
-          <button
-            onClick={() => {
-              if (confirm(`Delete table "${table.name}"?`)) onDelete()
-            }}
-            className="btn-danger"
-          >
-            Delete Table
-          </button>
-        )}
+        <button
+          onClick={() => {
+            const warn =
+              referencingTriggers.length > 0
+                ? `\n\nUsed by ${referencingTriggers.length} trigger(s): ${referencingTriggers
+                    .map((t) => t.name)
+                    .join(', ')}. Those triggers will stop rolling until you point them at another table.`
+                : ''
+            if (confirm(`Delete table "${table.name}"?${warn}`)) onDelete()
+          }}
+          className="btn-danger"
+        >
+          Delete Table
+        </button>
       </div>
     </div>
   )

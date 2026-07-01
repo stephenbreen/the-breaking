@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useStore } from '../store'
+import { statblockAC, statblockHP } from '../utils/statblock'
 
 export default function AddCombatantModal({
   open,
@@ -9,12 +10,14 @@ export default function AddCombatantModal({
   onClose: () => void
 }) {
   const add = useStore((s) => s.addCombatant)
+  const statblocks = useStore((s) => s.statblocks)
   const [name, setName] = useState('')
   const [type, setType] = useState<'pc' | 'monster'>('monster')
   const [maxHP, setMaxHP] = useState<string>('10')
   const [AC, setAC] = useState<string>('10')
   const [pp, setPP] = useState<string>('10')
   const [init, setInit] = useState<string>('10')
+  const [statblockId, setStatblockId] = useState<string>('')
 
   useEffect(() => {
     if (open) {
@@ -23,10 +26,24 @@ export default function AddCombatantModal({
       setAC('10')
       setPP('10')
       setInit('10')
+      setStatblockId('')
     }
   }, [open])
 
   if (!open) return null
+
+  // Picking a statblock links it and prefills name/HP/AC from it.
+  const chooseStatblock = (id: string) => {
+    setStatblockId(id)
+    const sb = statblocks.find((s) => s.id === id)
+    if (!sb) return
+    setType('monster')
+    if (sb.name) setName(sb.name)
+    const hp = statblockHP(sb)
+    if (hp != null) setMaxHP(String(hp))
+    const ac = statblockAC(sb)
+    if (ac != null) setAC(String(ac))
+  }
 
   const submit = (addAnother: boolean) => {
     if (!name.trim()) return
@@ -40,6 +57,7 @@ export default function AddCombatantModal({
       passivePerception: parseInt(pp, 10) || 10,
       initiative: parseInt(init, 10) || 10,
       nameVisibleToPlayers: type === 'pc',
+      statblockId: statblockId || undefined,
     })
     if (addAnother) {
       setName('')
@@ -82,6 +100,23 @@ export default function AddCombatantModal({
             Monster / NPC
           </button>
         </div>
+        {statblocks.length > 0 && (
+          <label className="block">
+            <span className="text-xs text-slate-400">From statblock (optional)</span>
+            <select
+              value={statblockId}
+              onChange={(e) => chooseStatblock(e.target.value)}
+              className="input w-full"
+            >
+              <option value="">— none —</option>
+              {statblocks.map((sb) => (
+                <option key={sb.id} value={sb.id}>
+                  {sb.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="block">
           <span className="text-xs text-slate-400">Name</span>
           <input

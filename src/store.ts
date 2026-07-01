@@ -1,8 +1,80 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { Combatant, EncounterState, RollTable, RolledInjury } from './types'
+import type {
+  Combatant,
+  CombatantType,
+  EncounterState,
+  EncounterTemplate,
+  RollTable,
+  RosterEntry,
+  Scene,
+  Statblock,
+  Trigger,
+  TriggerResult,
+  TriggerRoll,
+  TriggerScope,
+} from './types'
 import { buildDefaultEncounter } from './data/defaultState'
+import { expandRoster } from './data/encounter'
+import { migratePersisted } from './data/migrate'
 import { newId } from './utils/id'
+import { rollExpression, matchTableEntry } from './utils/dice'
+
+// ---------- Trigger engine helpers ----------
+
+const scopeMatches = (scope: TriggerScope, type: CombatantType): boolean =>
+  scope === 'any' || scope === type
+
+// Has this trigger NOT yet fired for this combatant within its dedupe window?
+const triggerEligible = (t: Trigger, c: Combatant): boolean => {
+  if (t.dedupe === 'perTurn') return !c.firedTriggers.includes(t.id)
+  if (t.dedupe === 'perRound') return !c.firedTriggersRound.includes(t.id)
+  return true // 'always'
+}
+
+// Build a pending TriggerResult for a fired trigger. Rolls are NOT performed
+// here — the DM (or a player) rolls via the toast, matching the existing
+// "players roll the die physically" flow.
+function buildResult(
+  trigger: Trigger,
+  combatant: Combatant | null,
+  tables: RollTable[],
+  ctx: { damage?: number; pct?: number }
+): TriggerResult {
+  const action = trigger.action
+  let tableId: string | null = null
+  let tableName: string | null = null
+  let dice: string | null = null
+  let rollsRequested = 0
+  let notifyText: string | undefined
+  if (action.kind === 'rollTable') {
+    tableId = action.tableId
+    const table = tables.find((t) => t.id === action.tableId)
+    tableName = table?.name ?? null
+    dice = table?.dice ?? null
+    rollsRequested = Math.max(1, action.rolls)
+  } else {
+    notifyText = action.text
+  }
+  return {
+    id: newId(),
+    triggerId: trigger.id,
+    triggerName: trigger.name,
+    eventKind: trigger.event.kind,
+    combatantId: combatant?.id ?? null,
+    combatantName: combatant?.name ?? '',
+    damage: ctx.damage,
+    pct: ctx.pct,
+    percentThreshold:
+      trigger.event.kind === 'massiveDamage' ? trigger.event.percentOfMax : undefined,
+    tableId,
+    tableName,
+    dice,
+    rollsRequested,
+    rolls: [],
+    notifyText,
+  }
+}
 
 type Actions = {
   addCombatant: (c: Partial<Combatant>) => void
@@ -20,18 +92,72 @@ type Actions = {
   setTimerRunning: (running: boolean) => void
   tickTimer: () => void
   resetTimer: () => void
-  setThresholds: (thresholds: number[]) => void
   replaceState: (state: Partial<EncounterState>) => void
   resetEncounter: () => void
-  clearFiredThresholds: () => void
-  addTable: (t: Omit<RollTable, 'id'>) => void
+  clearFiredTriggers: () => void
+  addTable: (t: Omit<RollTable, 'id'>) => string
+  duplicateTable: (id: string) => string | null
   updateTable: (id: string, patch: Partial<RollTable>) => void
   removeTable: (id: string) => void
-  clearTrigger: () => void
-  setTriggerRoll: (roll: RolledInjury | null) => void
+  addTrigger: (t: Omit<Trigger, 'id'>) => string
+  updateTrigger: (id: string, patch: Partial<Trigger>) => void
+  removeTrigger: (id: string) => void
+  rollTriggerResult: (resultId: string) => void
+  dismissTriggerResult: (resultId: string) => void
+  clearTriggerResults: () => void
+  // Prep library
+  addScene: () => string
+  updateScene: (id: string, patch: Partial<Scene>) => void
+  removeScene: (id: string) => void
+  importScene: (raw: unknown) => void
+  loadEncounter: (sceneId: string, encounterId: string) => void
+  saveCurrentAsEncounter: (sceneId: string, name: string) => void
+  addStatblocks: (statblocks: Statblock[]) => void
+  updateStatblock: (id: string, patch: Partial<Statblock>) => void
+  removeStatblock: (id: string) => void
 }
 
 export type Store = EncounterState & Actions
+
+// Durable fields written to localStorage.
+const PERSIST_KEYS = [
+  'combatants',
+  'currentTurnIndex',
+  'round',
+  'timerSeconds',
+  'timerRemaining',
+  'timerRunning',
+  'triggers',
+  'strategyLabelNames',
+  'tables',
+  'scenes',
+  'statblocks',
+] as const
+
+// Fields broadcast to the player window. Note: `scenes` and `statblocks` are
+// DM-only prep material and are deliberately NOT synced (keeps monster stats off
+// the player screen entirely); `triggerResults` is synced but not persisted.
+const SYNC_KEYS = [
+  'combatants',
+  'currentTurnIndex',
+  'round',
+  'timerSeconds',
+  'timerRemaining',
+  'timerRunning',
+  'triggers',
+  'strategyLabelNames',
+  'tables',
+  'triggerResults',
+] as const
+
+function pick<K extends keyof EncounterState>(
+  state: EncounterState,
+  keys: readonly K[]
+): Pick<EncounterState, K> {
+  const out = {} as Pick<EncounterState, K>
+  for (const k of keys) out[k] = state[k]
+  return out
+}
 
 const sortByInit = (combatants: Combatant[]) =>
   [...combatants].sort((a, b) => b.initiative - a.initiative)
@@ -57,9 +183,27 @@ export const useStore = create<Store>()(
             notes: '',
             nameVisibleToPlayers: c.nameVisibleToPlayers ?? (c.type === 'pc'),
             isDead: false,
-            firedThresholds: [],
+            firedTriggers: [],
+            firedTriggersRound: [],
           }
-          return { combatants: sortByInit([...s.combatants, newCombatant]) }
+          // Fire any "when a combatant is added" triggers (e.g. roll on a
+          // random-encounter / reinforcements table).
+          const results: TriggerResult[] = []
+          for (const t of s.triggers) {
+            if (
+              t.enabled &&
+              t.event.kind === 'combatantAdded' &&
+              scopeMatches(t.scope, newCombatant.type)
+            ) {
+              results.push(buildResult(t, newCombatant, s.tables, {}))
+            }
+          }
+          return {
+            combatants: sortByInit([...s.combatants, newCombatant]),
+            triggerResults: results.length
+              ? [...s.triggerResults, ...results]
+              : s.triggerResults,
+          }
         }),
 
       updateCombatant: (id, patch) =>
@@ -85,13 +229,53 @@ export const useStore = create<Store>()(
         const c = s.combatants.find((x) => x.id === id)
         if (!c) return
 
-        const pct = (amount / c.maxHP) * 100
-        const thresholds = [...s.thresholds].sort((a, b) => b - a) // highest first
-        let triggered: number | null = null
-        for (const t of thresholds) {
-          if (pct >= t && !c.firedThresholds.includes(t)) {
-            triggered = t
-            break
+        const prevHP = c.currentHP
+        const newHP = Math.max(0, prevHP - amount)
+        const pct = (amount / Math.max(1, c.maxHP)) * 100
+
+        const newResults: TriggerResult[] = []
+        const firedTurn: string[] = []
+        const firedRound: string[] = []
+        const record = (t: Trigger) => {
+          if (t.dedupe === 'perTurn') firedTurn.push(t.id)
+          else if (t.dedupe === 'perRound') firedRound.push(t.id)
+        }
+
+        // Massive-damage triggers: gather every enabled, in-scope, not-yet-fired
+        // threshold this hit clears, then fire ONLY the highest one. A 60% hit
+        // fires the 50% trigger (roll twice), not the 25% trigger.
+        const massive = s.triggers
+          .filter(
+            (t) =>
+              t.enabled &&
+              t.event.kind === 'massiveDamage' &&
+              scopeMatches(t.scope, c.type) &&
+              pct >= (t.event as { percentOfMax: number }).percentOfMax &&
+              triggerEligible(t, c)
+          )
+          .sort(
+            (a, b) =>
+              (b.event as { percentOfMax: number }).percentOfMax -
+              (a.event as { percentOfMax: number }).percentOfMax
+          )
+        if (massive.length > 0) {
+          record(massive[0])
+          newResults.push(buildResult(massive[0], c, s.tables, { damage: amount, pct }))
+        }
+
+        // HP-reached-zero triggers: fire when this hit drops the combatant from
+        // above 0 to 0 or below.
+        if (prevHP > 0 && newHP <= 0) {
+          for (const t of s.triggers) {
+            if (
+              t.enabled &&
+              t.event.kind === 'hpReachedZero' &&
+              scopeMatches(t.scope, c.type) &&
+              triggerEligible(t, c)
+            ) {
+              record(t)
+              newResults.push(buildResult(t, c, s.tables, { damage: amount, pct }))
+            }
           }
         }
 
@@ -100,25 +284,19 @@ export const useStore = create<Store>()(
             x.id === id
               ? {
                   ...x,
-                  currentHP: Math.max(0, x.currentHP - amount),
-                  firedThresholds:
-                    triggered != null
-                      ? [...x.firedThresholds, triggered]
-                      : x.firedThresholds,
+                  currentHP: newHP,
+                  firedTriggers: firedTurn.length
+                    ? [...x.firedTriggers, ...firedTurn]
+                    : x.firedTriggers,
+                  firedTriggersRound: firedRound.length
+                    ? [...x.firedTriggersRound, ...firedRound]
+                    : x.firedTriggersRound,
                 }
               : x
           ),
-          lastTrigger:
-            triggered != null
-              ? {
-                  combatantId: c.id,
-                  combatantName: c.name,
-                  threshold: triggered,
-                  damage: amount,
-                  pct,
-                }
-              : s.lastTrigger,
-          triggerRoll: triggered != null ? null : s.triggerRoll,
+          triggerResults: newResults.length
+            ? [...s.triggerResults, ...newResults]
+            : s.triggerResults,
         })
       },
 
@@ -142,13 +320,19 @@ export const useStore = create<Store>()(
           if (s.combatants.length === 0) return s
           const next = (s.currentTurnIndex + 1) % s.combatants.length
           const round = next === 0 ? s.round + 1 : s.round
+          const roundChanged = round !== s.round
           return {
             currentTurnIndex: next,
             round,
             timerRemaining: s.timerSeconds,
             timerRunning: false,
-            // Injury triggers are once-per-turn; clear them on any turn change.
-            combatants: s.combatants.map((c) => ({ ...c, firedThresholds: [] })),
+            // perTurn triggers clear on any turn change; perRound only when the
+            // round number changes.
+            combatants: s.combatants.map((c) => ({
+              ...c,
+              firedTriggers: [],
+              firedTriggersRound: roundChanged ? [] : c.firedTriggersRound,
+            })),
           }
         }),
 
@@ -160,12 +344,17 @@ export const useStore = create<Store>()(
               ? s.combatants.length - 1
               : s.currentTurnIndex - 1
           const round = s.currentTurnIndex === 0 ? Math.max(1, s.round - 1) : s.round
+          const roundChanged = round !== s.round
           return {
             currentTurnIndex: prev,
             round,
             timerRemaining: s.timerSeconds,
             timerRunning: false,
-            combatants: s.combatants.map((c) => ({ ...c, firedThresholds: [] })),
+            combatants: s.combatants.map((c) => ({
+              ...c,
+              firedTriggers: [],
+              firedTriggersRound: roundChanged ? [] : c.firedTriggersRound,
+            })),
           }
         }),
 
@@ -229,13 +418,18 @@ export const useStore = create<Store>()(
             }
             const next = (s.currentTurnIndex + 1) % s.combatants.length
             const round = next === 0 ? s.round + 1 : s.round
+            const roundChanged = round !== s.round
             return {
               currentTurnIndex: next,
               round,
               timerRemaining: s.timerSeconds,
               timerRunning: false,
-              // Injury triggers reset on turn change.
-              combatants: s.combatants.map((c) => ({ ...c, firedThresholds: [] })),
+              // perTurn triggers reset on turn change; perRound on round change.
+              combatants: s.combatants.map((c) => ({
+                ...c,
+                firedTriggers: [],
+                firedTriggersRound: roundChanged ? [] : c.firedTriggersRound,
+              })),
             }
           }
           return { timerRemaining: remaining }
@@ -243,9 +437,6 @@ export const useStore = create<Store>()(
 
       resetTimer: () =>
         set((s) => ({ timerRemaining: s.timerSeconds, timerRunning: false })),
-
-      setThresholds: (thresholds) =>
-        set({ thresholds: [...thresholds].sort((a, b) => a - b) }),
 
       replaceState: (partial) => set(partial as Store),
 
@@ -255,22 +446,46 @@ export const useStore = create<Store>()(
           return {
             ...fresh,
             tables: s.tables,
+            triggers: s.triggers,
             strategyLabelNames: s.strategyLabelNames,
-            thresholds: s.thresholds,
+            scenes: s.scenes,
+            statblocks: s.statblocks,
             timerSeconds: s.timerSeconds,
             timerRemaining: s.timerSeconds,
           }
         }),
 
-      clearFiredThresholds: () =>
+      clearFiredTriggers: () =>
         set((s) => ({
-          combatants: s.combatants.map((c) => ({ ...c, firedThresholds: [] })),
+          combatants: s.combatants.map((c) => ({
+            ...c,
+            firedTriggers: [],
+            firedTriggersRound: [],
+          })),
         })),
 
-      addTable: (t) =>
-        set((s) => ({
-          tables: [...s.tables, { ...t, id: newId() }],
-        })),
+      addTable: (t) => {
+        const id = newId()
+        set((s) => ({ tables: [...s.tables, { ...t, id }] }))
+        return id
+      },
+
+      duplicateTable: (id) => {
+        const s = get()
+        const src = s.tables.find((t) => t.id === id)
+        if (!src) return null
+        const copy: RollTable = {
+          ...src,
+          id: newId(),
+          name: `${src.name} (copy)`,
+          entries: src.entries.map((e) => ({ ...e, id: newId() })),
+        }
+        const idx = s.tables.findIndex((t) => t.id === id)
+        const tables = [...s.tables]
+        tables.splice(idx + 1, 0, copy)
+        set({ tables })
+        return copy.id
+      },
 
       updateTable: (id, patch) =>
         set((s) => ({
@@ -280,37 +495,157 @@ export const useStore = create<Store>()(
       removeTable: (id) =>
         set((s) => ({ tables: s.tables.filter((t) => t.id !== id) })),
 
-      clearTrigger: () => set({ lastTrigger: null, triggerRoll: null }),
+      addTrigger: (t) => {
+        const id = newId()
+        set((s) => ({ triggers: [...s.triggers, { ...t, id }] }))
+        return id
+      },
 
-      setTriggerRoll: (roll) => set({ triggerRoll: roll }),
+      updateTrigger: (id, patch) =>
+        set((s) => ({
+          triggers: s.triggers.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+        })),
+
+      removeTrigger: (id) =>
+        set((s) => ({ triggers: s.triggers.filter((t) => t.id !== id) })),
+
+      // Perform the rolls for a pending result (the toast's "Roll" button).
+      // A 50% massive-damage result rolls its table twice; results show every
+      // individual roll.
+      rollTriggerResult: (resultId) =>
+        set((s) => {
+          const result = s.triggerResults.find((r) => r.id === resultId)
+          if (!result || !result.tableId) return s
+          const table = s.tables.find((t) => t.id === result.tableId)
+          if (!table) return s
+          const rolls: TriggerRoll[] = []
+          const n = Math.max(1, result.rollsRequested || 1)
+          for (let i = 0; i < n; i++) {
+            const r = rollExpression(table.dice)
+            if (!r) continue
+            const entry = matchTableEntry(table.entries, r.total)
+            rolls.push({ roll: r.total, text: entry?.text ?? null })
+          }
+          return {
+            triggerResults: s.triggerResults.map((r) =>
+              r.id === resultId ? { ...r, rolls } : r
+            ),
+          }
+        }),
+
+      dismissTriggerResult: (resultId) =>
+        set((s) => ({
+          triggerResults: s.triggerResults.filter((r) => r.id !== resultId),
+        })),
+
+      clearTriggerResults: () => set({ triggerResults: [] }),
+
+      // ---------- Prep library ----------
+      // Scenes hold a nested encounters → roster tree. Nested edits are done by
+      // the UI computing new sub-arrays and passing them to updateScene, which
+      // keeps the store surface small.
+
+      addScene: () => {
+        const id = newId()
+        const scene: Scene = { id, name: 'New Scene', encounters: [] }
+        set((s) => ({ scenes: [...s.scenes, scene] }))
+        return id
+      },
+
+      updateScene: (id, patch) =>
+        set((s) => ({
+          scenes: s.scenes.map((sc) => (sc.id === id ? { ...sc, ...patch } : sc)),
+        })),
+
+      removeScene: (id) =>
+        set((s) => ({ scenes: s.scenes.filter((sc) => sc.id !== id) })),
+
+      importScene: (raw) =>
+        set((s) => {
+          const data = (raw ?? {}) as { scene?: Scene; statblocks?: Statblock[] } & Partial<Scene>
+          const incoming = (data.scene ?? data) as Scene
+          if (!incoming || typeof incoming !== 'object' || !Array.isArray(incoming.encounters)) {
+            return s
+          }
+          // Fresh scene id avoids collisions; keep nested/statblock ids so roster
+          // → statblock links survive.
+          const scene: Scene = { ...incoming, id: newId() }
+          const incomingSbs = Array.isArray(data.statblocks) ? data.statblocks : []
+          const known = new Set(s.statblocks.map((x) => x.id))
+          const addSbs = incomingSbs.filter((x) => x && x.id && !known.has(x.id))
+          return {
+            scenes: [...s.scenes, scene],
+            statblocks: [...s.statblocks, ...addSbs],
+          }
+        }),
+
+      loadEncounter: (sceneId, encounterId) =>
+        set((s) => {
+          const scene = s.scenes.find((x) => x.id === sceneId)
+          const enc = scene?.encounters.find((e) => e.id === encounterId)
+          if (!enc) return s
+          return {
+            combatants: sortByInit(expandRoster(enc.roster)),
+            currentTurnIndex: 0,
+            round: 1,
+            timerRemaining: s.timerSeconds,
+            timerRunning: false,
+            triggerResults: [],
+          }
+        }),
+
+      saveCurrentAsEncounter: (sceneId, name) =>
+        set((s) => {
+          const roster: RosterEntry[] = s.combatants.map((c) => ({
+            id: newId(),
+            name: c.name,
+            type: c.type,
+            quantity: 1,
+            maxHP: c.maxHP,
+            AC: c.AC,
+            passivePerception: c.passivePerception,
+            initiativeMode: 'static',
+            initiative: c.initiative,
+            initiativeMod: 0,
+            nameVisibleToPlayers: c.nameVisibleToPlayers,
+            statblockId: c.statblockId,
+            playerClass: c.playerClass,
+          }))
+          const encounter: EncounterTemplate = {
+            id: newId(),
+            name: name.trim() || 'Saved Encounter',
+            roster,
+          }
+          return {
+            scenes: s.scenes.map((sc) =>
+              sc.id === sceneId
+                ? { ...sc, encounters: [...sc.encounters, encounter] }
+                : sc
+            ),
+          }
+        }),
+
+      addStatblocks: (statblocks) =>
+        set((s) => ({ statblocks: [...s.statblocks, ...statblocks] })),
+
+      updateStatblock: (id, patch) =>
+        set((s) => ({
+          statblocks: s.statblocks.map((sb) => (sb.id === id ? { ...sb, ...patch } : sb)),
+        })),
+
+      removeStatblock: (id) =>
+        set((s) => ({ statblocks: s.statblocks.filter((sb) => sb.id !== id) })),
     }),
     {
       name: 'the-breaking-encounter',
+      version: 3,
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => {
-        const {
-          combatants,
-          currentTurnIndex,
-          round,
-          timerSeconds,
-          timerRemaining,
-          timerRunning,
-          thresholds,
-          strategyLabelNames,
-          tables,
-        } = state
-        return {
-          combatants,
-          currentTurnIndex,
-          round,
-          timerSeconds,
-          timerRemaining,
-          timerRunning,
-          thresholds,
-          strategyLabelNames,
-          tables,
-        } as unknown as EncounterState
-      },
+      // Persist only the durable fields. Keep this list and SYNC_KEYS (below)
+      // in step when adding state — see CLAUDE.md.
+      partialize: (state) => pick(state, PERSIST_KEYS) as unknown as EncounterState,
+      // Upgrade older saves (v0 thresholds, v1 oncePerTurn) to the current
+      // trigger schema — see src/data/migrate.ts.
+      migrate: (persisted, _version) => migratePersisted(persisted),
     }
   )
 )
@@ -320,35 +655,10 @@ export const useStore = create<Store>()(
 // We sync their state by broadcasting a snapshot after every store change
 // and applying received snapshots locally. A `receiving` flag prevents loops.
 
-type Snapshot = EncounterState
+type Snapshot = Pick<EncounterState, (typeof SYNC_KEYS)[number]>
 
 function snapshot(s: EncounterState): Snapshot {
-  const {
-    combatants,
-    currentTurnIndex,
-    round,
-    timerSeconds,
-    timerRemaining,
-    timerRunning,
-    thresholds,
-    strategyLabelNames,
-    tables,
-    lastTrigger,
-    triggerRoll,
-  } = s
-  return {
-    combatants,
-    currentTurnIndex,
-    round,
-    timerSeconds,
-    timerRemaining,
-    timerRunning,
-    thresholds,
-    strategyLabelNames,
-    tables,
-    lastTrigger,
-    triggerRoll,
-  }
+  return pick(s, SYNC_KEYS)
 }
 
 if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {

@@ -1,12 +1,17 @@
 import { useRef, useState } from 'react'
 import { useStore } from '../store'
+import { migratePersisted } from '../data/migrate'
 import type { EncounterState } from '../types'
 
-export default function EncounterMenu() {
+export default function EncounterMenu({
+  onOpenLibrary,
+}: {
+  onOpenLibrary: () => void
+}) {
   const state = useStore()
   const replace = useStore((s) => s.replaceState)
   const reset = useStore((s) => s.resetEncounter)
-  const clearFired = useStore((s) => s.clearFiredThresholds)
+  const clearFired = useStore((s) => s.clearFiredTriggers)
   const [open, setOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -15,7 +20,7 @@ export default function EncounterMenu() {
       combatants,
       round,
       currentTurnIndex,
-      thresholds,
+      triggers,
       strategyLabelNames,
       tables,
       timerSeconds,
@@ -24,7 +29,7 @@ export default function EncounterMenu() {
       combatants,
       round,
       currentTurnIndex,
-      thresholds,
+      triggers,
       strategyLabelNames,
       tables,
       timerSeconds,
@@ -49,20 +54,32 @@ export default function EncounterMenu() {
       const txt = await file.text()
       const data = JSON.parse(txt)
       if (!confirm('Replace the current encounter with imported data?')) return
+      // Normalise through the same migration as persisted state so older files
+      // (thresholds / oncePerTurn) and combatants missing the fired-trigger
+      // arrays are brought up to the current schema.
+      const norm = migratePersisted(data) as Record<string, unknown>
+      const combatants = Array.isArray(norm.combatants) ? norm.combatants : []
+      const rawIndex =
+        typeof norm.currentTurnIndex === 'number' ? norm.currentTurnIndex : 0
+      const triggers = Array.isArray(norm.triggers) ? norm.triggers : []
       const next: Partial<EncounterState> = {
-        combatants: Array.isArray(data.combatants) ? data.combatants : [],
-        round: typeof data.round === 'number' ? data.round : 1,
-        currentTurnIndex:
-          typeof data.currentTurnIndex === 'number' ? data.currentTurnIndex : 0,
-        thresholds: Array.isArray(data.thresholds) ? data.thresholds : [25, 50],
-        strategyLabelNames: Array.isArray(data.strategyLabelNames)
-          ? data.strategyLabelNames
+        combatants: combatants as EncounterState['combatants'],
+        round: typeof norm.round === 'number' ? norm.round : 1,
+        // Clamp the turn index so an imported file can't point past the end.
+        currentTurnIndex: Math.min(Math.max(0, rawIndex), Math.max(0, combatants.length - 1)),
+        triggers: (triggers.length
+          ? triggers
+          : state.triggers) as EncounterState['triggers'],
+        strategyLabelNames: Array.isArray(norm.strategyLabelNames)
+          ? (norm.strategyLabelNames as string[])
           : ['Surrounded'],
-        tables: Array.isArray(data.tables) ? data.tables : state.tables,
-        timerSeconds: typeof data.timerSeconds === 'number' ? data.timerSeconds : 60,
-        timerRemaining: typeof data.timerSeconds === 'number' ? data.timerSeconds : 60,
+        tables: (Array.isArray(norm.tables)
+          ? norm.tables
+          : state.tables) as EncounterState['tables'],
+        timerSeconds: typeof norm.timerSeconds === 'number' ? norm.timerSeconds : 60,
+        timerRemaining: typeof norm.timerSeconds === 'number' ? norm.timerSeconds : 60,
         timerRunning: false,
-        lastTrigger: null,
+        triggerResults: [],
       }
       replace(next)
       setOpen(false)
@@ -80,6 +97,16 @@ export default function EncounterMenu() {
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-full mt-1 z-20 bg-slate-900 border border-slate-700 rounded shadow-xl w-60 py-1">
+            <button
+              onClick={() => {
+                onOpenLibrary()
+                setOpen(false)
+              }}
+              className="w-full text-left px-3 py-2 hover:bg-slate-800 text-sm"
+            >
+              Library — scenes & statblocks…
+            </button>
+            <div className="border-t border-slate-700 my-1" />
             <button
               onClick={() => {
                 if (confirm('Start a new encounter? Combatants will be cleared; tables kept.')) {

@@ -9,6 +9,8 @@ import EncounterMenu from './components/EncounterMenu'
 import SettingsPanel from './components/SettingsPanel'
 import AddCombatantModal from './components/AddCombatantModal'
 import HelpModal from './components/HelpModal'
+import LibraryModal from './components/LibraryModal'
+import ThemeToggle from './components/ThemeToggle'
 
 type Tab = 'initiative' | 'dice' | 'tables' | 'settings'
 
@@ -23,8 +25,25 @@ export default function App() {
   const resetTimer = useStore((s) => s.resetTimer)
   const [addOpen, setAddOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [libraryOpen, setLibraryOpen] = useState(false)
   const [tab, setTab] = useState<Tab>('initiative')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  // Desktop-only: collapse the right panel to give initiative full width.
+  const [rightOpen, setRightOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('the-breaking-sidepanel') !== 'closed'
+    } catch {
+      return true
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('the-breaking-sidepanel', rightOpen ? 'open' : 'closed')
+    } catch {
+      /* ignore */
+    }
+  }, [rightOpen])
 
   const current = combatants[currentIdx]
 
@@ -42,13 +61,18 @@ export default function App() {
       ) {
         return
       }
-      if (addOpen || helpOpen) return
+      if (addOpen || helpOpen || libraryOpen) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
 
       switch (e.key) {
         case '?':
           e.preventDefault()
           setHelpOpen(true)
+          break
+        case 'l':
+        case 'L':
+          e.preventDefault()
+          setLibraryOpen(true)
           break
         case ' ':
         case 'ArrowRight':
@@ -97,6 +121,7 @@ export default function App() {
   }, [
     addOpen,
     helpOpen,
+    libraryOpen,
     combatants.length,
     nextTurn,
     previousTurn,
@@ -166,20 +191,42 @@ export default function App() {
         </div>
         <Timer />
         <button
+          onClick={() => setRightOpen((v) => !v)}
+          className="btn hidden sm:inline-flex items-center gap-1.5"
+          title={
+            rightOpen
+              ? 'Hide the dice / tables / settings panel'
+              : 'Show the dice / tables / settings panel'
+          }
+          aria-label={rightOpen ? 'Hide side panel' : 'Show side panel'}
+        >
+          <span aria-hidden>{rightOpen ? '⇥' : '⇤'}</span>
+          {rightOpen ? 'Hide panel' : 'Show panel'}
+        </button>
+        <button
           onClick={openPlayerView}
           className="btn hidden sm:inline-flex"
           title="Open player view in a new window"
         >
           Player View ↗
         </button>
-        <EncounterMenu />
+        <button
+          onClick={() => setLibraryOpen(true)}
+          className="btn hidden sm:inline-flex"
+          title="Scenes, encounters & statblocks (L)"
+        >
+          📚 Library
+        </button>
+        <EncounterMenu onOpenLibrary={() => setLibraryOpen(true)} />
+        <ThemeToggle />
         <button
           onClick={() => setHelpOpen(true)}
-          className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-sm font-bold flex items-center justify-center transition"
+          className="btn inline-flex items-center gap-1.5"
           title="Help — how to use this app (?)"
           aria-label="Open help"
         >
-          ?
+          <span aria-hidden className="font-bold">?</span>
+          <span className="hidden sm:inline">Help</span>
         </button>
       </header>
 
@@ -221,11 +268,12 @@ export default function App() {
           </div>
         </div>
 
-        {/* Right panel: fixed-width on desktop, full-width on mobile when a non-initiative tab is active */}
+        {/* Right panel: fixed-width on desktop (collapsible), full-width on mobile
+            when a non-initiative tab is active. */}
         <div
-          className={`flex-1 sm:flex-none sm:w-[32rem] flex-col min-w-0 sm:flex ${
+          className={`flex-1 flex-col min-w-0 ${
             tab !== 'initiative' ? 'flex' : 'hidden'
-          }`}
+          } ${rightOpen ? 'sm:flex sm:flex-none sm:w-[32rem]' : 'sm:hidden'}`}
         >
           {/* Desktop sub-tabs (dice/tables/settings) */}
           <div className="hidden sm:flex border-b border-slate-800">
@@ -249,6 +297,15 @@ export default function App() {
 
       <AddCombatantModal open={addOpen} onClose={() => setAddOpen(false)} />
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <LibraryModal
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        onLoaded={() => {
+          setLibraryOpen(false)
+          setTab('initiative')
+          setExpandedId(null)
+        }}
+      />
       <InjuryToast />
     </div>
   )

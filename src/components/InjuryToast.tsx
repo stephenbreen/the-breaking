@@ -1,34 +1,38 @@
 import { useStore } from '../store'
-import { rollExpression, matchTableEntry } from '../utils/dice'
+import type { TriggerResult } from '../types'
+
+// Headline for the toast, by event kind.
+function headline(r: TriggerResult): { title: string; detail: string } {
+  const name = r.combatantName || 'A combatant'
+  switch (r.eventKind) {
+    case 'massiveDamage':
+      return {
+        title: `Massive damage — ${r.percentThreshold}% threshold`,
+        detail:
+          r.damage != null
+            ? `${name} took ${r.damage} damage (${Math.round(r.pct ?? 0)}% of max HP).`
+            : `${name} took massive damage.`,
+      }
+    case 'hpReachedZero':
+      return { title: 'Down!', detail: `${name} dropped to 0 HP.` }
+    case 'combatantAdded':
+      return { title: r.triggerName, detail: `${name} joined the encounter.` }
+  }
+}
 
 export default function InjuryToast() {
-  const trigger = useStore((s) => s.lastTrigger)
-  const rolled = useStore((s) => s.triggerRoll)
-  const setRoll = useStore((s) => s.setTriggerRoll)
-  const clear = useStore((s) => s.clearTrigger)
-  const tables = useStore((s) => s.tables)
+  const results = useStore((s) => s.triggerResults)
+  const roll = useStore((s) => s.rollTriggerResult)
+  const dismiss = useStore((s) => s.dismissTriggerResult)
 
-  if (!trigger) return null
+  if (results.length === 0) return null
 
-  const tableKey = trigger.threshold <= 25 ? 'injury25' : 'injury50'
-  const table =
-    tables.find((t) => t.builtIn === tableKey) ??
-    tables.find((t) =>
-      t.name.toLowerCase().includes(`injury ${trigger.threshold}`)
-    )
-
-  const doRoll = () => {
-    if (!table) return
-    const r = rollExpression(table.dice)
-    if (!r) return
-    const entry = matchTableEntry(table.entries, r.total)
-    setRoll({
-      tableName: table.name,
-      diceExpression: table.dice,
-      roll: r.total,
-      text: entry?.text ?? null,
-    })
-  }
+  // Show the most recent result; dismissing reveals the one behind it.
+  const r = results[results.length - 1]
+  const behind = results.length - 1
+  const { title, detail } = headline(r)
+  const isRollTable = r.tableId != null
+  const rolled = r.rolls.length > 0
 
   return (
     <div className="fixed bottom-4 right-4 z-40 w-[26rem] max-w-[95vw] bg-slate-900 border-2 border-amber-500 rounded-lg shadow-2xl p-4 space-y-3">
@@ -37,43 +41,53 @@ export default function InjuryToast() {
           ⚠️
         </span>
         <div className="flex-1">
-          <div className="font-bold text-amber-300">
-            Massive damage — {trigger.threshold}% threshold
-          </div>
-          <div className="text-sm text-slate-300 mt-1">
-            <b>{trigger.combatantName}</b> took {trigger.damage} damage (
-            {Math.round(trigger.pct)}% of max HP).
-          </div>
-          {table ? (
-            <div className="text-xs text-slate-400 mt-1">
-              Have the player roll <b>{table.dice}</b> on "{table.name}", or click Roll.
-            </div>
-          ) : (
-            <div className="text-xs text-red-400 mt-1">
-              No injury table configured for {trigger.threshold}%.
-            </div>
-          )}
+          <div className="font-bold text-amber-300">{title}</div>
+          <div className="text-sm text-slate-300 mt-1">{detail}</div>
+          {isRollTable ? (
+            r.tableName ? (
+              <div className="text-xs text-slate-400 mt-1">
+                Roll <b>{r.dice}</b> on "{r.tableName}"
+                {r.rollsRequested > 1 ? <> <b>×{r.rollsRequested}</b></> : null}, or
+                click Roll.
+              </div>
+            ) : (
+              <div className="text-xs text-red-400 mt-1">
+                This trigger's table was deleted — point it at another in Settings.
+              </div>
+            )
+          ) : r.notifyText ? (
+            <div className="text-sm text-amber-100 mt-2 italic">{r.notifyText}</div>
+          ) : null}
         </div>
       </div>
+
       {rolled && (
-        <div className="rounded p-2 bg-amber-950 border border-amber-700 text-sm">
-          <div className="text-xs text-amber-400">
-            {rolled.tableName}: rolled <b>{rolled.roll}</b>
-          </div>
-          <div className="mt-1">
-            {rolled.text ?? (
-              <em className="text-slate-500">No matching entry.</em>
-            )}
-          </div>
+        <div className="rounded p-2 bg-amber-950 border border-amber-700 text-sm space-y-1.5">
+          {r.rolls.map((roll, i) => (
+            <div key={i}>
+              <div className="text-xs text-amber-400">
+                {r.rolls.length > 1 ? `Roll ${i + 1} — ` : ''}
+                {r.tableName}: rolled <b>{roll.roll}</b>
+              </div>
+              <div className="mt-0.5">
+                {roll.text ?? <em className="text-slate-500">No matching entry.</em>}
+              </div>
+            </div>
+          ))}
         </div>
       )}
-      <div className="flex gap-2 justify-end">
-        {table && !rolled && (
-          <button onClick={doRoll} className="btn-primary">
-            Roll {table.dice}
+
+      <div className="flex items-center gap-2 justify-end">
+        {behind > 0 && (
+          <span className="text-[11px] text-slate-500 mr-auto">+{behind} more</span>
+        )}
+        {isRollTable && r.tableName && !rolled && (
+          <button onClick={() => roll(r.id)} className="btn-primary">
+            Roll {r.dice}
+            {r.rollsRequested > 1 ? ` ×${r.rollsRequested}` : ''}
           </button>
         )}
-        <button onClick={clear} className="btn">
+        <button onClick={() => dismiss(r.id)} className="btn">
           Dismiss
         </button>
       </div>

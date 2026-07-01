@@ -5,6 +5,7 @@ import { hpStatus, hpStatusColor } from './utils/hpStatus'
 import Hourglass from './components/Hourglass'
 import PlayerInjuryBanner from './components/PlayerInjuryBanner'
 import CombatantIcon from './components/CombatantIcon'
+import ThemeToggle from './components/ThemeToggle'
 import { classLabel } from './data/playerClasses'
 
 export default function PlayerView() {
@@ -29,6 +30,7 @@ export default function PlayerView() {
       <PlayerInjuryBanner />
       <header className="flex items-center gap-6 px-8 py-4 border-b border-slate-800 bg-slate-900 sticky top-0 z-10">
         <h1 className="text-3xl font-bold tracking-tight">⚔ The Breaking</h1>
+        <ThemeToggle />
         <div className="flex-1" />
         <div className="text-center">
           <div className="text-xs uppercase tracking-widest text-slate-400">Round</div>
@@ -136,7 +138,7 @@ export default function PlayerView() {
                             title={def.description}
                             className="text-xs px-2 py-1 rounded bg-purple-900 text-purple-100"
                           >
-                            {def.name}
+                            <span aria-hidden>{def.icon}</span> {def.name}
                           </span>
                         ) : null
                       })}

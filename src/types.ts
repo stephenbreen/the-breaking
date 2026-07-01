@@ -29,8 +29,15 @@ export type Combatant = {
   notes: string
   nameVisibleToPlayers: boolean
   isDead: boolean
-  firedThresholds: number[]
+  // Trigger ids already fired for this combatant in the current turn (for
+  // `dedupe: 'perTurn'`). Cleared on every turn change.
+  firedTriggers: string[]
+  // Trigger ids already fired for this combatant in the current round (for
+  // `dedupe: 'perRound'`). Cleared only when the round number changes.
+  firedTriggersRound: string[]
   playerClass?: PlayerClassId
+  // Optional link to a Statblock (DM-only reference material).
+  statblockId?: string
 }
 
 export type TableEntry = {
@@ -44,22 +51,145 @@ export type RollTable = {
   name: string
   dice: string
   entries: TableEntry[]
-  builtIn?: 'injury25' | 'injury50'
 }
 
-export type TriggerInfo = {
-  combatantId: string
+// ---------- Triggers ----------
+// A Trigger is a DM-authored rule: "when EVENT happens, do ACTION."
+// It generalises the old hard-coded massive-damage thresholds.
+
+export type TriggerScope = 'any' | 'pc' | 'monster'
+
+export type TriggerEventKind = 'massiveDamage' | 'hpReachedZero' | 'combatantAdded'
+
+export type TriggerEvent =
+  // A single hit dealing >= percentOfMax % of the target's max HP.
+  | { kind: 'massiveDamage'; percentOfMax: number }
+  // The combatant's current HP crosses from above 0 to 0 or below.
+  | { kind: 'hpReachedZero' }
+  // A new combatant was added to the encounter.
+  | { kind: 'combatantAdded' }
+
+export type TriggerAction =
+  // Roll on a table `rolls` times (e.g. 50% massive damage = roll the injury
+  // table twice). tableId may be null if the referenced table was deleted.
+  | { kind: 'rollTable'; tableId: string | null; rolls: number }
+  // Just surface a reminder to the DM.
+  | { kind: 'notify'; text: string }
+
+// How often a trigger may fire for the same combatant:
+//   always   — every qualifying hit/event
+//   perTurn  — at most once per combatant per turn (resets on turn change)
+//   perRound — at most once per combatant per round (resets on round change),
+//              for effects that should only happen once "this round"
+export type TriggerDedupe = 'always' | 'perTurn' | 'perRound'
+
+export type Trigger = {
+  id: string
+  name: string
+  enabled: boolean
+  scope: TriggerScope
+  dedupe: TriggerDedupe
+  event: TriggerEvent
+  action: TriggerAction
+}
+
+export type TriggerRoll = { roll: number; text: string | null }
+
+// A fired trigger awaiting the DM's attention. Transient (synced, not persisted).
+export type TriggerResult = {
+  id: string
+  triggerId: string
+  triggerName: string
+  eventKind: TriggerEventKind
+  combatantId: string | null
   combatantName: string
-  threshold: number
-  damage: number
-  pct: number
+  // massiveDamage context
+  damage?: number
+  pct?: number
+  percentThreshold?: number
+  // rollTable action
+  tableId: string | null
+  tableName: string | null
+  dice: string | null
+  rollsRequested: number
+  rolls: TriggerRoll[]
+  // notify action
+  notifyText?: string
 }
 
-export type RolledInjury = {
-  tableName: string
-  diceExpression: string
-  roll: number
-  text: string | null
+// ---------- Statblocks ----------
+// Normalised from the Fantasy Statblocks (Javalent) YAML/JSON schema. Fields are
+// kept loose (strings) so partial statblocks render fine; numeric prefill (AC,
+// HP, initiative mod) is derived on demand in utils/statblock.ts.
+
+export type StatblockSection = { name: string; desc: string }
+
+export type Statblock = {
+  id: string
+  name: string
+  size?: string
+  type?: string
+  subtype?: string
+  alignment?: string
+  ac?: string
+  hp?: string
+  hitDice?: string
+  speed?: string
+  stats?: number[] // [STR, DEX, CON, INT, WIS, CHA]
+  saves?: string
+  skillsaves?: string
+  damageVulnerabilities?: string
+  damageResistances?: string
+  damageImmunities?: string
+  conditionImmunities?: string
+  senses?: string
+  languages?: string
+  cr?: string
+  traits?: StatblockSection[]
+  actions?: StatblockSection[]
+  bonusActions?: StatblockSection[]
+  reactions?: StatblockSection[]
+  legendaryActions?: StatblockSection[]
+  source?: string
+}
+
+// ---------- Prep library: Scene → Encounter → roster ----------
+
+export type InitiativeMode =
+  | 'roll-each' // each expanded combatant rolls its own 1d20 + mod
+  | 'roll-group' // one 1d20 + mod shared by the whole line
+  | 'static' // everyone uses `initiative`
+  | 'manual' // seeded with `initiative`, DM edits live at the table
+
+// One line of an encounter roster; `quantity` expands into N combatants on load.
+export type RosterEntry = {
+  id: string
+  name: string
+  type: CombatantType
+  quantity: number
+  maxHP: number
+  AC: number
+  passivePerception: number
+  initiativeMode: InitiativeMode
+  initiative: number
+  initiativeMod: number
+  nameVisibleToPlayers: boolean
+  statblockId?: string
+  playerClass?: PlayerClassId
+}
+
+export type EncounterTemplate = {
+  id: string
+  name: string
+  notes?: string
+  roster: RosterEntry[]
+}
+
+export type Scene = {
+  id: string
+  name: string
+  notes?: string
+  encounters: EncounterTemplate[]
 }
 
 export type EncounterState = {
@@ -69,9 +199,10 @@ export type EncounterState = {
   timerSeconds: number
   timerRemaining: number
   timerRunning: boolean
-  thresholds: number[]
+  triggers: Trigger[]
   strategyLabelNames: string[]
   tables: RollTable[]
-  lastTrigger: TriggerInfo | null
-  triggerRoll: RolledInjury | null
+  triggerResults: TriggerResult[]
+  scenes: Scene[]
+  statblocks: Statblock[]
 }

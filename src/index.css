@@ -2,6 +2,91 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  Theming — see DESIGN.md.
+  The neutral (slate) and accent (indigo) Tailwind scales are driven by CSS
+  variables (space-separated RGB triples so Tailwind's /<alpha-value> works).
+  Toggling `.dark` on <html> flips the whole app between the parchment "light"
+  theme and the warm "dark" theme without touching component classes.
+  Slate numbers keep their semantic role: LOW = text/ink, HIGH = surfaces.
+*/
+:root {
+  /* neutral scale (parchment + ink) */
+  --slate-50: 253 246 227;  /* light ink on dark buttons */
+  --slate-100: 42 24 16;    /* primary ink — body/heading text */
+  --slate-200: 62 44 32;
+  --slate-300: 74 53 32;
+  --slate-400: 107 82 57;   /* muted text */
+  --slate-500: 139 115 85;  /* faint text */
+  --slate-600: 160 133 96;
+  --slate-700: 107 82 57;   /* leather — borders, neutral button */
+  --slate-800: 201 166 101; /* mid parchment — chips, dividers */
+  --slate-900: 232 213 167; /* parchment — cards, panels */
+  --slate-950: 240 224 184; /* page parchment */
+
+  /* accent scale (burgundy + gold) */
+  --indigo-300: 160 40 40;   /* active-turn text — burgundy */
+  --indigo-400: 184 134 11;  /* active-card border — gold */
+  --indigo-500: 160 40 40;
+  --indigo-600: 124 29 29;   /* primary action — burgundy */
+  --indigo-700: 92 20 20;
+  --indigo-800: 92 20 20;
+  --indigo-900: 230 194 112; /* active accent block — gold */
+  --indigo-950: 251 233 180; /* active translucent bg — soft gold */
+
+  /* semantic surfaces that flip */
+  --input-bg: 245 230 201;
+  --input-ink: 42 24 16;
+  --input-border: 139 111 71;
+  --input-focus: 124 29 29;
+  --scroll-track: 232 213 167;
+  --scroll-thumb: 139 111 71;
+  --scroll-thumb-hover: 92 64 51;
+
+  /* statblock accent — dark burgundy on parchment */
+  --sb-heading: 124 29 29;
+
+  color-scheme: light;
+}
+
+.dark {
+  /* neutral scale (warm near-black + light ink) */
+  --slate-50: 253 246 227;
+  --slate-100: 240 230 210; /* primary ink → light warm */
+  --slate-200: 222 210 188;
+  --slate-300: 198 184 158;
+  --slate-400: 165 150 124; /* muted text */
+  --slate-500: 135 121 98;  /* faint text */
+  --slate-600: 110 98 78;
+  --slate-700: 78 68 54;    /* leather — borders */
+  --slate-800: 54 47 38;    /* chips, dividers, inputs */
+  --slate-900: 34 29 23;    /* cards, panels */
+  --slate-950: 22 19 15;    /* page — warm near-black */
+
+  /* accent scale (brighter for dark surfaces) */
+  --indigo-300: 214 150 150; /* active-turn text — warm rose */
+  --indigo-400: 200 150 60;  /* active-card border — gold */
+  --indigo-500: 180 70 70;
+  --indigo-600: 150 45 45;   /* primary action — burgundy */
+  --indigo-700: 110 30 30;
+  --indigo-800: 90 25 25;
+  --indigo-900: 120 92 40;   /* active accent block — dim gold */
+  --indigo-950: 58 47 26;    /* active translucent bg — dark gold */
+
+  --input-bg: 46 40 32;
+  --input-ink: 240 230 210;
+  --input-border: 78 68 54;
+  --input-focus: 200 150 60;
+  --scroll-track: 34 29 23;
+  --scroll-thumb: 78 68 54;
+  --scroll-thumb-hover: 110 98 78;
+
+  /* statblock accent — warm gold on dark */
+  --sb-heading: 217 164 65;
+
+  color-scheme: dark;
+}
+
 html,
 body,
 #root {
@@ -14,6 +99,7 @@ body {
 }
 
 @layer components {
+  /* Leather + burgundy buttons read well on both themes, so they stay fixed. */
   .btn {
     @apply px-3 py-1.5 rounded text-sm transition disabled:opacity-40 disabled:cursor-not-allowed;
     background-color: #5c4033;
@@ -49,12 +135,12 @@ body {
   }
   .input {
     @apply rounded px-2 py-1 text-sm focus:outline-none transition-colors;
-    background-color: #f5e6c9;
-    color: #2a1810;
-    border: 1px solid #8b6f47;
+    background-color: rgb(var(--input-bg));
+    color: rgb(var(--input-ink));
+    border: 1px solid rgb(var(--input-border));
   }
   .input:focus {
-    border-color: #7c1d1d;
+    border-color: rgb(var(--input-focus));
   }
 }
 
@@ -80,18 +166,18 @@ body {
   75% { transform: translateX(-4px); }
 }
 
-/* Scrollbar — leather rail on parchment */
+/* Scrollbar — leather rail, themed */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #e8d5a7;
+  background: rgb(var(--scroll-track));
 }
 ::-webkit-scrollbar-thumb {
-  background: #8b6f47;
+  background: rgb(var(--scroll-thumb));
   border-radius: 5px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #5c4033;
+  background: rgb(var(--scroll-thumb-hover));
 }

@@ -51,6 +51,18 @@ export default function HelpModal({
               server, no accounts. Everything auto-saves to this browser's
               local storage.
             </p>
+            <p className="mt-2">
+              Prefer a darker table? The <b>🌙 Dark</b> / <b>☀️ Light</b> button
+              in the header switches between the parchment light theme and a warm
+              dark theme. Your choice is remembered, and the player window follows
+              along.
+            </p>
+            <p className="mt-2">
+              On desktop, the <b>Hide panel</b> / <b>Show panel</b> button in the
+              header collapses the right-hand panel (dice / tables / settings) so
+              the initiative list gets the full width. Click it again to bring the
+              panel back.
+            </p>
           </section>
 
           <section>
@@ -75,10 +87,65 @@ export default function HelpModal({
               keeps the dialog open for rapid entry of a monster pack.
             </p>
             <p className="mt-2">
+              If you've imported statblocks, the dialog's <b>From statblock</b>{' '}
+              picker prefills name, HP, and AC (and links the statblock) in one
+              step.
+            </p>
+            <p className="mt-2">
               Combatants default to <em>name visible to players</em> for PCs
               and <em>hidden</em> for monsters. Players see <code>???</code>{' '}
               until you flip the toggle in the expanded card — useful when you
               want to reveal a boss at the right dramatic moment.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="text-base font-semibold text-white mb-1">
+              Library — scenes, encounters & statblocks
+            </h3>
+            <p>
+              <b>📚 Library</b> in the header (or <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs">L</kbd>)
+              opens your prep library. A <b>Scene</b> (e.g. "Wishing Well") holds
+              several <b>Encounters</b> ("Goblin Ambush", "Griffin Attack"). It
+              ships with an example scene so you can see the shape.
+            </p>
+            <ul className="list-disc pl-5 space-y-1 mt-2">
+              <li>
+                Each roster line has a <b>quantity</b> (Goblin ×4) that expands
+                into separate combatants on load.
+              </li>
+              <li>
+                <b>Initiative</b> per line: <em>roll each</em>, <em>roll as
+                group</em> (one shared roll), <em>static</em>, or <em>manual</em>
+                (seeded, you set it live). Rolls use 1d20 + the line's modifier.
+              </li>
+              <li>
+                <b>Load ▶</b> replaces the current fight with that encounter
+                (rolling initiative as configured). <b>Save current fight here</b>
+                captures the live board back into the scene.
+              </li>
+              <li>
+                <b>Export / Import</b> a scene as JSON (bundling its statblocks)
+                to share setups or prep offline.
+              </li>
+            </ul>
+            <p className="mt-2">
+              The <b>Statblocks</b> tab imports{' '}
+              <a
+                href="https://plugins.javalent.com/statblocks/readme/code-block"
+                target="_blank"
+                rel="noreferrer"
+                className="text-indigo-400 hover:text-indigo-300"
+              >
+                Fantasy Statblocks
+              </a>{' '}
+              YAML, <em>or</em> <b>5etools / 5e.tools bestiary JSON</b> (paste or
+              upload) — a single monster, a JSON array, or a whole{' '}
+              <code>{'{ "monster": [ … ] }'}</code> file. Link a statblock to a
+              roster line or a combatant; then <b>hover</b> the{' '}
+              <b>📜 statblock</b> chip for a quick line, or <b>click</b> it (or
+              expand the card) for the full block. Statblocks are DM-only — they
+              never appear on the player view.
             </p>
           </section>
 
@@ -113,13 +180,18 @@ export default function HelpModal({
               Damage and healing
             </h3>
             <p>
-              Every row has a quick input with <b>Dmg</b> and <b>Heal</b>{' '}
-              buttons. Type a number and hit the button, or press{' '}
+              Every combatant row has a quick <b>HP</b> field — type a number and
+              press{' '}
               <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs">
                 Enter
               </kbd>{' '}
-              to apply damage. Click the row to expand for full editing of
-              HP, AC, PP, initiative, notes, and name.
+              to deal damage, or{' '}
+              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs">
+                Shift+Enter
+              </kbd>{' '}
+              to heal. Click the row to expand for separate <b>Damage</b> /{' '}
+              <b>Heal</b> buttons and full editing of HP, AC, PP, initiative,
+              conditions, statblock, notes, and name.
             </p>
             <p className="mt-2">
               The player view never shows numeric HP. Instead it shows a word
@@ -136,24 +208,30 @@ export default function HelpModal({
 
           <section>
             <h3 className="text-base font-semibold text-white mb-1">
-              Massive damage → injury tables
+              Triggers — injuries and beyond
             </h3>
             <p>
-              When a single hit deals ≥ a threshold percent of max HP, a
-              toast prompts you to roll on the matching injury table. Default
-              thresholds are 25 % and 50 %, configurable in the{' '}
-              <b>settings</b> tab. Only the highest matching threshold fires.
+              A <b>trigger</b> is a rule: "when something happens → roll a
+              table." You manage them in the <b>Settings</b> tab.
             </p>
             <p className="mt-2">
-              Each combatant triggers at most{' '}
-              <b>once per turn</b>. If the same combatant takes two hits on
-              the same turn, only the first fires. Turn counters reset
-              automatically on every turn advance — manual reset lives in
-              <b> Settings</b> or the <b>Encounter ▾</b> menu.
+              The built-in injury rule is <b>two triggers on one table</b>: a
+              single hit dealing ≥ 25 % of max HP rolls the injury table{' '}
+              <em>once</em>; ≥ 50 % rolls the <em>same</em> table <em>twice</em>.
+              When several massive-damage triggers match one hit, only the
+              highest fires. Each trigger has a <b>Fire at most</b> cadence —{' '}
+              <em>every time</em>, <em>once per turn</em>, or <em>once per
+              round</em> per combatant (for an effect that should only happen
+              once this round). Turn/round counters reset automatically; manual
+              reset lives in <b>Settings</b> and the <b>Encounter ▾</b> menu.
             </p>
             <p className="mt-2">
-              Players typically roll the injury die physically. The toast
-              also has a <b>Roll</b> button for the DM to preview the result.
+              Other events you can trigger on: a combatant dropping to{' '}
+              <b>0 HP</b>, or a new <b>combatant being added</b> (e.g. roll on a
+              reinforcements / random-encounter table). When a trigger fires a
+              toast prompts you — players can roll the die physically, or click{' '}
+              <b>Roll</b> to do it in-app. Injury reveals also flash on the
+              player view; combatant-added notes stay on the DM panel.
             </p>
           </section>
 
@@ -162,10 +240,12 @@ export default function HelpModal({
               Conditions
             </h3>
             <p>
-              Expand a combatant's card to toggle standard 5e conditions
-              (including Exhaustion 1–6). Hover any condition chip for its
-              rules blurb. Conditions show up in both the DM and player
-              views.
+              Expand a combatant's card and click <b>+ Add</b> under Conditions
+              to open a picker listing every 5e condition with its icon and name
+              (including Exhaustion 1–6). Tap to add or remove — pick as many as
+              you need, then Done. Chosen conditions appear under the label as
+              chips with an <b>×</b> to clear them, and also show (with icons) on
+              the combatant's row and the player view.
             </p>
           </section>
 
@@ -186,10 +266,12 @@ export default function HelpModal({
               Tables
             </h3>
             <p>
-              The <b>tables</b> tab has Injury 25 % and Injury 50 % seeded
-              with editable starter entries. Add your own tables (treasure,
-              complications, wild magic…), edit ranges and results in place,
-              and roll directly. Import / export individual tables as JSON.
+              The <b>tables</b> tab seeds an <b>Injury Table</b> you can edit.
+              Add your own (treasure, complications, reinforcements…), edit
+              ranges and results in place, reorder entries with ▲/▼, roll
+              directly, <b>Duplicate</b> a table to spin a variant, and{' '}
+              <b>Delete</b> any table. Import / export individual tables as
+              JSON. Point any trigger at any table from <b>Settings</b>.
             </p>
           </section>
 
@@ -229,6 +311,10 @@ export default function HelpModal({
               <li>
                 <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs">A</kbd>{' '}
                 — add combatant
+              </li>
+              <li>
+                <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs">L</kbd>{' '}
+                — open the library
               </li>
               <li>
                 <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs">T</kbd>{' '}
