@@ -628,6 +628,11 @@ export default function CombatantCard({
                 onChange={(e) => update(c.id, { name: e.target.value })}
                 className="input flex-1 sm:w-40"
                 title="Rename"
+                // Suppress password-manager / autofill overlays on the name field.
+                autoComplete="off"
+                data-1p-ignore="true"
+                data-lpignore="true"
+                data-form-type="other"
               />
               <button
                 onClick={() => {

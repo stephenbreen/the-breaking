@@ -118,12 +118,21 @@ export default function AddCombatantModal({
           </label>
         )}
         <label className="block">
-          <span className="text-xs text-slate-400">Name</span>
+          <span className="text-xs text-slate-400">
+            {type === 'pc' ? 'Character Name' : 'Name'}
+          </span>
           <input
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="input w-full"
+            placeholder={type === 'pc' ? 'e.g. Aria Nightbreeze' : 'e.g. Goblin'}
+            // Keep password managers / browser autofill (1Password, LastPass,
+            // Dashlane, Chrome) out of the character-name field.
+            autoComplete="off"
+            data-1p-ignore="true"
+            data-lpignore="true"
+            data-form-type="other"
           />
         </label>
         <div className="grid grid-cols-2 gap-2">
